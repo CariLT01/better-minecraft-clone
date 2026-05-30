@@ -21,7 +21,7 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(glfw)
 
 # Add source
-add_executable (BetterMinecraftClone "BetterMinecraftClone.cpp" "BetterMinecraftClone.h" "Window.cpp" "Window.h" "glad/src/glad.c" "Game.cpp" "Game.h" "ChunkMesh.cpp" "ChunkMesh.h" "Shader.h" "Shader.cpp" "ShaderProgram.h" "ShaderProgram.cpp" "Camera.h" "Camera.cpp" "ChunkBuilder.h" "config.h" "ChunkBuilder.cpp" "MathUtils.h" "WorldChunks.h" "Chunk.h" "Chunk.cpp" "WorldChunks.cpp" "TerrainGenerator.h" "TerrainGenerator.cpp")
+add_executable (BetterMinecraftClone "src/BetterMinecraftClone.cpp" "src/BetterMinecraftClone.h" "src/Window.cpp" "src/Window.h" "glad/src/glad.c" "src/Game.cpp" "src/Game.h" "src/ChunkMesh.cpp" "src/ChunkMesh.h" "src/Shader.h" "src/Shader.cpp" "src/ShaderProgram.h" "src/ShaderProgram.cpp" "src/Camera.h" "src/Camera.cpp" "src/ChunkBuilder.h" "src/config.h" "src/ChunkBuilder.cpp" "src/MathUtils.h" "src/WorldChunks.h" "src/Chunk.h" "src/Chunk.cpp" "src/WorldChunks.cpp" "src/TerrainGenerator.h" "src/TerrainGenerator.cpp" "src/TextureLoader.h" "src/TextureLoader.cpp" "src/BlockTypes.h" "src/Texture.h" "src/Texture.cpp" "src/TextureArray.cpp" "src/TextureArray.h")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BetterMinecraftClone PROPERTY CXX_STANDARD 20)
@@ -40,6 +40,13 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/shaders"
             "$<TARGET_FILE_DIR:BetterMinecraftClone>/shaders"
+)
+
+add_custom_command(
+    TARGET BetterMinecraftClone POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+            "${CMAKE_CURRENT_SOURCE_DIR}/textures"
+            "$<TARGET_FILE_DIR:BetterMinecraftClone>/textures"
 )
 
 # TODO: Add tests and install targets if needed.
