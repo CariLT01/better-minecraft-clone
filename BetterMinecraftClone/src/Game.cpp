@@ -89,7 +89,7 @@ void Game::initialize() {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
-	// glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // DEBUG: WIREFRAME
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // DEBUG: WIREFRAME
 
 	glViewport(0, 0, window->getWidth(), window->getHeight());
 
