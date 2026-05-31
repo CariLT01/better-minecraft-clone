@@ -51,8 +51,8 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 
 
 		if (!nextChunkToLoad.has_value()) {
-			std::cout << "No more chunks to load" << std::endl;
-			return;
+			// std::cout << "No more chunks to load" << std::endl;
+			break;
 		}
 
 		// Generate chunk if it doesn't exist
