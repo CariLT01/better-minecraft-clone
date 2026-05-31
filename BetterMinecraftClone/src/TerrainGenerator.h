@@ -15,4 +15,8 @@ private:
 	FastNoise::SmartNode<FastNoise::DomainWarpSimplex> simplex2 = FastNoise::New<FastNoise::DomainWarpSimplex>();
 	FastNoise::SmartNode<FastNoise::Simplex> simplexbase = FastNoise::New<FastNoise::Simplex>();
 	FastNoise::SmartNode<FastNoise::FractalFBm> caveFractal = FastNoise::New<FastNoise::FractalFBm>();
+
+	std::array<float, CHUNK_VOLUME> gridArray1;
+	std::array<float, CHUNK_VOLUME> gridArray2;
+	std::array<float, CHUNK_VOLUME> gridArray3;
 };
