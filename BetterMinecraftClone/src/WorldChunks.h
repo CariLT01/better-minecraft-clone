@@ -8,6 +8,8 @@
 #include "ShaderProgram.h"
 #include "TerrainGenerator.h"
 #include "TextureArray.h"
+#include "ChunkBuilderWorkerScheduler.h"
+#include "WorldGeneratorScheduler.h"
 
 constexpr unsigned int RENDER_DISTANCE_VOLUME = (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1);
 
@@ -43,7 +45,9 @@ private:
     std::unordered_map<ChunkPos, ChunkMesh*, ChunkPosHash> chunkMeshesMap;
 
     std::unordered_set<ChunkPos, ChunkPosHash> loadedChunks;
+    std::unordered_set<ChunkPos, ChunkPosHash> loadingChunks;
     std::unordered_set<ChunkPos, ChunkPosHash> pendingChunks;
+    std::unordered_set<ChunkPos, ChunkPosHash> generatingChunks;
     
 
     std::array<ChunkPos, RENDER_DISTANCE_VOLUME> chunkOffsets;
@@ -53,7 +57,7 @@ private:
 
     bool isReadyToBuild(const ChunkPos& pos);
 
-	ChunkMesh* buildChunkMesh(const ChunkPos& pos);
+	void buildChunkMesh(const ChunkPos& pos);
 
     std::optional<ChunkPos> getNextChunkToLoad(const glm::vec3& playerChunkPos);
 
@@ -62,7 +66,9 @@ private:
     ShaderProgram* terrainShaderProgram;
     TextureArray* textureAtlas;
 
-    TerrainGenerator* generator;
+    WorldGeneratorScheduler* worldGenScheduler;
 
     unsigned int numTextures;
+
+    ChunkBuilderWorkerScheduler* scheduler;
 };

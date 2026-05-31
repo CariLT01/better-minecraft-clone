@@ -8,3 +8,5 @@ constexpr unsigned int RENDER_DISTANCE = 6;
 
 constexpr unsigned int TEXTURE_W = 16;
 constexpr unsigned int TEXTURE_H = 16;
+
+  

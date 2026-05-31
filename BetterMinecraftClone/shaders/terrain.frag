@@ -14,5 +14,6 @@ void main() {
 	vec3 blockColor = texture(uTextureAtlas, vec3(vUv, fBlockType)).rgb; 
 
 
+
 	FragColor = vec4(blockColor * vec3(vBrightness), 1.0);
 }

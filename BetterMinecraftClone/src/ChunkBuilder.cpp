@@ -26,44 +26,64 @@ const int faceOffsetLookup[6 * 3] = {
 
 ChunkBuilder::ChunkBuilder() {
     cachedBlockTypes = getRuntimeBlockTypes();
+    buildAoData();
+}
+
+unsigned int ChunkBuilder::getAoIndex(int x, int y, int z, unsigned int face) {
+    return (((x * 3 * 3) + y * 3) + z) * 6 + face;
+}
+
+void ChunkBuilder::buildAoData() {
+    unsigned int index = 0;
+    for (const AOPositionsData& aoPos : aoPositionData) {
+        unsigned int faceIndex = index / 4;
+        unsigned int i = getAoIndex(aoPos.vertexLocalPos.x, aoPos.vertexLocalPos.y, aoPos.vertexLocalPos.z, faceIndex);
+        cachedAo[i] = aoPos;
+        index++;
+    }
 }
 
 std::vector<Vertex> ChunkBuilder::buildChunkMeshData(const ChunkDataInput& chunkDataIn) {
 
-	std::cout << "Rebuild" << std::endl;
+	// std::cout << "Rebuild" << std::endl;
 
 	Chunk* chunkData = chunkDataIn.chunkData;
 
 	std::vector<Vertex> vertices;
-	for (int x = 0; x < CHUNK_SIZE; x++) {
-		for (int y = 0; y < CHUNK_SIZE; y++) {
-			for (int z = 0; z < CHUNK_SIZE; z++) {
-				int blockIndex = getIndex(x, y, z);
-                uint8_t blockType = chunkData->getBlockAt(blockIndex);
-				if (blockType == 0) continue;
+    vertices.reserve(4096);
 
-				for (int face = 0; face < 6; face++) {
-					if (!isVoid(chunkDataIn, x + faceOffsetLookup[face * 3 + 0], y + faceOffsetLookup[face * 3 + 1], z + faceOffsetLookup[face * 3 + 2])) continue;
-					// std::cout << "Generate face at: " << x << ", " << y << ", " << z << " face: " << face << std::endl;
-					generateFace(blockType, face, x, y, z, vertices);
-				}
-			}
-		}
+    for (unsigned int i = 0; i < CHUNK_VOLUME; i++) {
+        glm::vec3 blockPos = getXYZ(i);
+        const int x = blockPos.x;
+        const int y = blockPos.y;
+        const int z = blockPos.z;
+		int blockIndex = getIndex(x, y, z);
+        uint8_t blockType = chunkData->getBlockAt(blockIndex);
+		if (blockType == 0) continue;
+		for (int face = 0; face < 6; face++) {
+			if (!isVoid(chunkDataIn, x + faceOffsetLookup[face * 3 + 0], y + faceOffsetLookup[face * 3 + 1], z + faceOffsetLookup[face * 3 + 2])) continue;
+			// std::cout << "Generate face at: " << x << ", " << y << ", " << z << " face: " << face << std::endl;
+			generateFace(chunkDataIn, blockType, face, x, y, z, vertices);
+	    }
 	}
 	return vertices;
 }
 
-unsigned int packData(unsigned int blockType, unsigned int faceIndex, unsigned int vertexIndex) {
+unsigned int packData(unsigned int textureType, unsigned int ao) {
 
-    unsigned int maskedIndex = vertexIndex & 0x03;   // 2 bits max (0-3)
-    unsigned int maskedFace = faceIndex & 0x07;     // 3 bits max (0-7)
-    unsigned int maskedBlock = blockType & 0xFF;     // 8 bits max (0-255)
+    // layout:
+    // 8 bits texture type --- 2 bits ao
 
-	return (maskedBlock << 5) | (maskedFace << 2) | maskedIndex;
+    uint8_t textureTypeMasked = textureType & 0b11111111;
+    uint8_t aoMasked = ao & 0b11;
+
+    unsigned int packed = (textureTypeMasked << 2) | aoMasked;
+
+    return packed;
 }
 
-unsigned int getTextureTypeFromBlockTypeAndFace(uint8_t blockType, unsigned int faceIndex) {
-    RuntimeBlockType t = getRuntimeBlockTypes().runtimeBlockTypes[static_cast<int>(blockType - 1)]; // TODO: stop repeatedly calling getRuntimeBlockTypes
+unsigned int ChunkBuilder::getTextureTypeFromBlockTypeAndFace(uint8_t blockType, unsigned int faceIndex) {
+    const auto& t = cachedBlockTypes.runtimeBlockTypes[static_cast<int>(blockType - 1)]; // TODO: stop repeatedly calling getRuntimeBlockTypes
     if (faceIndex == 4) {
 		// top face
 		return t.topTextureIndex;
@@ -78,13 +98,42 @@ unsigned int getTextureTypeFromBlockTypeAndFace(uint8_t blockType, unsigned int 
     }
 }
 
-void ChunkBuilder::generateFace(uint8_t blockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices) {
+unsigned int ChunkBuilder::getAoAtPosition(const ChunkDataInput& chunkData, int vx, int vy, int vz, unsigned int bx, unsigned int by, unsigned int bz, unsigned int face) {
+    unsigned int i = getAoIndex(vx, vy, vz, face);
+
+    AOPositionsData aoData = cachedAo[i];
+
+    LocalPos side1Offset = aoData.blockAOpositions.side1;
+    LocalPos side2Offset = aoData.blockAOpositions.side2;
+    LocalPos side3Offset = aoData.blockAOpositions.side3;
+
+    int ibx = static_cast<int>(bx);
+    int iby = static_cast<int>(by);
+    int ibz = static_cast<int>(bz);
+
+    bool solidSide1 = !isVoid(chunkData, ibx + side1Offset.x, iby + side1Offset.y, ibz + side1Offset.z);
+    bool solidSide2 = !isVoid(chunkData, ibx + side2Offset.x, iby + side2Offset.y, ibz + side2Offset.z);
+    bool solidSide3 = !isVoid(chunkData, ibx + side3Offset.x, iby + side3Offset.y, ibz + side3Offset.z); // corner
+
+    unsigned int ao = 0;
+    if (solidSide1 && solidSide2) {
+        ao = 0;
+    }
+    else {
+        ao = 3 - (solidSide1 + solidSide2 + solidSide3);
+    }
+
+    return ao;
+}
+
+void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices) {
 	// A face is made of 4 vertices (ordered as a quad)
 		// We will convert them into 2 triangles (6 vertices total for OpenGL/DirectX)
-	int indices[6] = { 0, 1, 2, 2, 3, 0 };
     int uvLookup[4] = { 0, 1, 3, 2 };
 
 	Vertex faceVertices[4];
+    unsigned int aoValues[4];
+
 
     int ttype = getTextureTypeFromBlockTypeAndFace(blockType, faceIndex);;
 
@@ -92,21 +141,40 @@ void ChunkBuilder::generateFace(uint8_t blockType, unsigned int faceIndex, unsig
 	for (int i = 0; i < 4; i++) {
 		int cornerIndex = faceTris[faceIndex][i];
 		
-		glm::vec3 vertexPos = glm::vec3(cubeVertices[cornerIndex][0] + blockX, cubeVertices[cornerIndex][1] + blockY, cubeVertices[cornerIndex][2] + blockZ);
+        int localPosX = cubeVertices[cornerIndex][0];
+        int localPosY = cubeVertices[cornerIndex][1];
+        int localPosZ = cubeVertices[cornerIndex][2];
 
-		faceVertices[i].position = vertexPos;
+        aoValues[i] = getAoAtPosition(chunkData, localPosX, localPosY, localPosZ, blockX, blockY, blockZ, faceIndex);
+
+        int vx = localPosX + blockX;
+        int vy = localPosY + blockY;
+        int vz = localPosZ + blockZ;
+
+		 
+
+		faceVertices[i].position = glm::vec3(vx, vy, vz);
 
 		glm::vec3 normal = glm::vec3(normals[faceIndex][0], normals[faceIndex][1], normals[faceIndex][2]);
 
         faceVertices[i].normal = normal;
         //faceVertices[i].uv = glm::vec2(uvTemplate[uvLookup[i] * 2 + 0], uvTemplate[uvLookup[i] * 2 + 1]);
         faceVertices[i].uv = glm::vec2(uvTemplate[i * 2 + 0], uvTemplate[i * 2 + 1]);
-        faceVertices[i].textureType = ttype;
+        faceVertices[i].packedData = packData(ttype, aoValues[i]);
 	}
+
+    int defaultIndices[6] = { 0, 1, 2, 2, 3, 0 };
+    int flippedIndices[6] = { 1, 2, 3, 3, 0, 1 };
+
+    int* chosenIndices = defaultIndices;
+    if (aoValues[0] + aoValues[2] < aoValues[1] + aoValues[3]) {
+        // std::cout << "Rotated" << std::endl;
+        chosenIndices = flippedIndices;
+    }
 
 	// 2. Push the 6 vertices (2 triangles) into your mesh buffer
 	for (int i = 0; i < 6; i++) {
-		vertices.push_back(faceVertices[indices[i]]);
+		vertices.push_back(faceVertices[chosenIndices[i]]);
 	}
 }
 
