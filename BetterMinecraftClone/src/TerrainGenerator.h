@@ -12,4 +12,7 @@ public:
 private:
 
 	FastNoise::SmartNode<FastNoise::Perlin> simplex = FastNoise::New<FastNoise::Perlin>();
+	FastNoise::SmartNode<FastNoise::DomainWarpSimplex> simplex2 = FastNoise::New<FastNoise::DomainWarpSimplex>();
+	FastNoise::SmartNode<FastNoise::Simplex> simplexbase = FastNoise::New<FastNoise::Simplex>();
+	FastNoise::SmartNode<FastNoise::FractalFBm> caveFractal = FastNoise::New<FastNoise::FractalFBm>();
 };

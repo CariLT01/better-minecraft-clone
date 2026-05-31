@@ -9,6 +9,7 @@ vertices(vertices), indices(indices), context(context), offset(offset) {
 
 ChunkMesh::~ChunkMesh() {
 	glDeleteBuffers(1, &vbo);
+	glDeleteBuffers(1, &vao);
 }
 
 void ChunkMesh::createMesh() {

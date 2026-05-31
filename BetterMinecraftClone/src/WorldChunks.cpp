@@ -27,7 +27,12 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 
 			chunkMap[currentCpos] = newChunk;
 
-			loadingChunks.erase(currentCpos);
+			generatingChunks.erase(currentCpos);
+
+			// Add it to pending if not already in it
+			if (pendingChunks.find(currentCpos) == pendingChunks.end()) {
+				pendingChunks.insert(currentCpos);
+			}
 		}
 
 		worldGenScheduler->clearResults();
@@ -51,14 +56,11 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 			pos.x, pos.y, pos.z
 			});
 
-		loadingChunks.insert(pos);
+		generatingChunks.insert(pos);
 	}
 
 
-	// Add it to pending if not already in it
-	if (pendingChunks.find(nextChunkToLoad.value()) == pendingChunks.end()) {
-		pendingChunks.insert(nextChunkToLoad.value());
-	}
+
 
 	std::unordered_set<ChunkPos, ChunkPosHash> chunksToRemove;
 
@@ -115,7 +117,11 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 			// Unload it
 			delete chunkMeshesMap[pos];
 			chunkMeshesMap.erase(pos);
-			// chunkMap.erase(pos);
+			delete chunkMap[pos];
+			loadingChunks.erase(pos);
+			pendingChunks.erase(pos);
+			generatingChunks.erase(pos);
+			chunkMap.erase(pos); // TODO: don't erase, but store on disk or something
 			chunksToRemove.insert(pos);
 		}
 	}

@@ -10,6 +10,28 @@
             "cmakeCommandArgs": "",
             "buildCommandArgs": "",
             "ctestCommandArgs": ""
+        },
+        {
+            "name": "x64-Release",
+            "generator": "Ninja",
+            "configurationType": "RelWithDebInfo",
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "inheritEnvironments": [ "msvc_x64_x64" ]
+        },
+        {
+            "name": "x64-Debug-MemoryLeak",
+            "generator": "Ninja",
+            "configurationType": "Debug",
+            "buildRoot": "${projectDir}\\out\\build\\${name}",
+            "installRoot": "${projectDir}\\out\\install\\${name}",
+            "cmakeCommandArgs": "-DCMAKE_CXX_FLAGS_DEBUG=\"/Zi /MDd /fsanitize=address\" -DCMAKE_EXE_LINKER_FLAGS_DEBUG=\"/fsanitize=address\"",
+            "buildCommandArgs": "",
+            "ctestCommandArgs": "",
+            "inheritEnvironments": [ "msvc_x64_x64" ]
         }
     ]
 }
