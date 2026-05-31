@@ -35,6 +35,20 @@ public:
 
 	void update(Camera* camera, WorldChunks* chunks);
 
+    glm::vec3 getHitPos() {
+        return offset;
+    }
+
+    glm::vec3 getHitNormal() {
+        return hitNormal;
+    }
+
+    bool getHit() {
+        return hit;
+    }
+
+    glm::vec3 getPlacementOffset(Camera* camera);
+
 private:
 	unsigned int vbo;
 	unsigned int vao;
@@ -42,6 +56,7 @@ private:
 	ShaderProgram* shaderProgram;
 
 	glm::vec3 offset;
+    glm::vec3 hitNormal;
 
 	void initializeShaders();
 	void initializeMesh();

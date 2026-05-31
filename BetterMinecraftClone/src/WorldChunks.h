@@ -43,6 +43,7 @@ public:
     void render(Camera* camera);
 
     uint8_t getBlockAt(int x, int y, int z);
+    void setBlockAt(int x, int y, int z, uint8_t blockType);
 
 private:
     std::unordered_map<ChunkPos, Chunk*, ChunkPosHash> chunkMap;
@@ -75,4 +76,10 @@ private:
     unsigned int numTextures;
 
     ChunkBuilderWorkerScheduler* scheduler;
+
+    void remeshChunk(const ChunkPos& pos);
+
+    // Remesh with a block modification coordinate
+    void remeshModified(const ChunkPos& pos, int modificationX, int modificationY, int modificationZ);
+    
 };

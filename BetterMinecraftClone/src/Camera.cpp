@@ -71,3 +71,55 @@ void Camera::moveLocal(const glm::vec3& localOffset) {
 	// Apply it to the current position
 	position += worldOffset;
 }
+
+glm::vec3 cardinalDirectionToVector(CardinalDirection direction) {
+	switch (direction) {
+	case FRONT:
+		return glm::vec3(0.0f, 0.0f, 1.0f);   // Towards you
+	case BACK:
+		return glm::vec3(0.0f, 0.0f, -1.0f);  // Away from you
+	case LEFT:
+		return glm::vec3(-1.0f, 0.0f, 0.0f);  // To the left
+	case RIGHT:
+		return glm::vec3(1.0f, 0.0f, 0.0f);   // To the right
+	case UP:
+		return glm::vec3(0.0f, 1.0f, 0.0f);   // Up (Top)
+	case DOWN:
+		return glm::vec3(0.0f, -1.0f, 0.0f);  // Down (Bottom)
+	default:
+		return glm::vec3(0.0f, 0.0f, 0.0f);   // Fallback safety case
+	}
+}
+
+CardinalDirection Camera::getCardinalFacingDirection() {
+	const glm::vec3 standardNormals[] = {
+		glm::vec3(0.0f,  0.0f,  1.0f), // 0: FRONT
+		glm::vec3(0.0f,  0.0f, -1.0f), // 1: BACK
+		glm::vec3(-1.0f,  0.0f,  0.0f), // 2: LEFT
+		glm::vec3(1.0f,  0.0f,  0.0f), // 3: RIGHT
+		glm::vec3(0.0f,  1.0f,  0.0f), // 4: TOP (UP)
+		glm::vec3(0.0f, -1.0f,  0.0f)  // 5: BOTTOM (DOWN)
+	};
+
+	const CardinalDirection cardinalDirections[] = {
+		FRONT,
+		BACK,
+		LEFT,
+		RIGHT,
+		UP,    // Maps to TOP
+		DOWN   // Maps to BOTTOM
+	};
+
+	float maxDot = -2.0f;
+	int bestIndex = 0;
+
+	for (int i = 0; i < 6; i++) {
+		float currentDot = glm::dot(front, standardNormals[i]);
+		if (currentDot > maxDot) {
+			maxDot = currentDot;
+			bestIndex = i;
+		}
+	}
+
+	return cardinalDirections[bestIndex];
+}

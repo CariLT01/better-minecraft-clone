@@ -31,7 +31,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 
 			// Add it to pending if not already in it
 			if (pendingChunks.find(currentCpos) == pendingChunks.end()) {
-				pendingChunks.insert(currentCpos);
+				remeshChunk(currentCpos);
 			}
 		}
 
@@ -95,6 +95,14 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 			if (taskResult.vertices.size() <= 0) continue;
 
 			ChunkPos currentPos = { taskResult.x, taskResult.y, taskResult.z };
+
+			// check if chunk already exists
+			if (chunkMeshesMap.find(currentPos) != chunkMeshesMap.end()) {
+				// delete it
+				delete chunkMeshesMap[currentPos];
+				chunkMeshesMap.erase(currentPos);
+			}
+
 
 			ChunkMesh* chunkMesh = new ChunkMesh(taskResult.vertices, {}, { terrainShaderProgram, textureAtlas, numTextures }, glm::vec3(taskResult.x, taskResult.y, taskResult.z) * glm::vec3(CHUNK_SIZE));
 			chunkMeshesMap[currentPos] = chunkMesh;
@@ -231,6 +239,13 @@ void WorldChunks::render(Camera* camera) {
 	}
 }
 
+void WorldChunks::remeshChunk(const ChunkPos& pos) {
+	if (chunkMap.find(pos) == chunkMap.end()) {
+		return;
+	}
+	pendingChunks.insert(pos);
+}
+
 uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 	glm::vec3 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
 	ChunkPos cposStruct = { cpos.x, cpos.y, cpos.z };
@@ -246,4 +261,62 @@ uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 	int lz = (z % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
 
 	return c->getBlockAt(getIndex(lx, ly, lz));
+}
+
+
+
+void WorldChunks::setBlockAt(int x, int y, int z, uint8_t blockType) {
+	glm::vec3 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
+	ChunkPos cposStruct = { cpos.x, cpos.y, cpos.z };
+
+	if (chunkMap.find(cposStruct) == chunkMap.end()) {
+		return;
+	}
+
+	Chunk* c = chunkMap[cposStruct];
+
+	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int lz = (z % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+
+	c->setBlockAt(getIndex(lx, ly, lz), blockType);
+
+	remeshModified(cposStruct, lx, ly, lz);
+}
+
+void WorldChunks::remeshModified(const ChunkPos& pos, int x, int y, int z) {
+	std::vector<ChunkPos> toRemesh = { {0, 0, 0} };
+	
+	if (x == 0) {
+		// remesh negX
+		toRemesh.push_back({ -1, 0, 0 });
+	}
+	if (y == 0) {
+		// remesh negY
+		toRemesh.push_back({ 0, -1, 0 });
+	}
+
+	if (z == 0) {
+		toRemesh.push_back({ 0, 0, -1 });
+	}
+
+	if (x == CHUNK_SIZE - 1) {
+		toRemesh.push_back({ 1, 0, 0 });
+	}
+
+	if (y == CHUNK_SIZE - 1) {
+		toRemesh.push_back({ 0, 1, 0 });
+	}
+
+	if (z == CHUNK_SIZE - 1) {
+		toRemesh.push_back({ 0, 0, 1 });
+	}
+
+	for (const ChunkPos& toRemeshCoord : toRemesh) {
+		int cx = pos.x + toRemeshCoord.x;
+		int cy = pos.y + toRemeshCoord.y;
+		int cz = pos.z + toRemeshCoord.z;
+
+		remeshChunk({ cx, cy, cz });
+	}
 }

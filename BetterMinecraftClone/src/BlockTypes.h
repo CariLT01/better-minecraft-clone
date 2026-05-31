@@ -17,7 +17,7 @@ struct RuntimeBlockType {
 	unsigned int bottomTextureIndex;
 };
 
-constexpr unsigned int NUM_BLOCK_TYPES = 3;
+constexpr unsigned int NUM_BLOCK_TYPES = 4;
 
 constexpr BlockType blockTypes[NUM_BLOCK_TYPES] = {
 	{
@@ -34,6 +34,11 @@ constexpr BlockType blockTypes[NUM_BLOCK_TYPES] = {
 		"textures/stone.png",
 		"textures/stone.png",
 		"textures/stone.png"
+	},
+	{
+		"textures/cobblestone.png",
+		"textures/cobblestone.png",
+		"textures/cobblestone.png"
 	}
 };
 

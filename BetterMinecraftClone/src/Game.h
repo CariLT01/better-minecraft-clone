@@ -19,7 +19,9 @@ private:
 	void createWindow();
 
 	void render();
-	void tick(); 
+	void tick();
+
+	static void mouseButtonPressedCallback(GLFWwindow* window, int button, int action, int mods);
 
 	Window* window;
 

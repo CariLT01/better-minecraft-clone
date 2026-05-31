@@ -51,6 +51,10 @@ void BlockHighlight::update(Camera* camera, WorldChunks* chunks) {
 	float dy = dir.y * stepSize;
 	float dz = dir.z * stepSize;
 
+	int lastX = floor(x);
+	int lastY = floor(y);
+	int lastZ = floor(z);
+
 	hit = false;
 
 	while (d < 5.0f) {
@@ -66,8 +70,23 @@ void BlockHighlight::update(Camera* camera, WorldChunks* chunks) {
 
 		if (chunks->getBlockAt(fx, fy, fz) != 0) {
 			hit = true;
+
+			if (fx != lastX) {
+				hitNormal = glm::vec3(lastX - fx, 0.0f, 0.0f); // Returns (-1, 0, 0) or (1, 0, 0)
+			}
+			else if (fy != lastY) {
+				hitNormal = glm::vec3(0.0f, lastY - fy, 0.0f); // Returns (0, -1, 0) or (0, 1, 0)
+			}
+			else if (fz != lastZ) {
+				hitNormal = glm::vec3(0.0f, 0.0f, lastZ - fz); // Returns (0, 0, -1) or (0, 0, 1)
+			}
+
 			break;
 		}
+
+		lastX = fx;
+		lastY = fy;
+		lastZ = fz;
 	}
 
 	int bx = floor(x);
@@ -98,4 +117,10 @@ void BlockHighlight::render(Camera* camera) {
 	glLineWidth(2.0f);
 	glDrawArrays(GL_LINES, 0, verticesCount);
 	glLineWidth(1.0f);
+}
+
+glm::vec3 BlockHighlight::getPlacementOffset(Camera* camera) {
+	CardinalDirection facingDir = camera->getCardinalFacingDirection();
+	
+	return cardinalDirectionToVector(facingDir) * glm::vec3(-1.0f);
 }

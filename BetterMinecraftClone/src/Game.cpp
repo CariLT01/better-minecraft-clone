@@ -27,10 +27,32 @@ void Game::run() {
 	window->terminate();
 }
 
+void Game::mouseButtonPressedCallback(GLFWwindow* window, int button, int action, int mods) {
+	Game* gameInstance = static_cast<Game*>(glfwGetWindowUserPointer(window));
+	if (!gameInstance->blockHighlight->getHit()) return;
+	// get current look
+	glm::vec3 hitPos = gameInstance->blockHighlight->getHitPos();
+	
+	if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
+		gameInstance->worldChunks->setBlockAt(hitPos.x, hitPos.y, hitPos.z, 0);
+	}
+
+	if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_PRESS) {
+		glm::vec3 placementOffset = gameInstance->blockHighlight->getHitNormal();
+
+		
+		gameInstance->worldChunks->setBlockAt(hitPos.x + placementOffset.x, hitPos.y + placementOffset.y, hitPos.z + placementOffset.z, 4);
+	}
+
+	
+}
+
 void Game::createWindow() {
 	window = new Window(800, 600, "Better Minecraft Clone r3");
 	glfwSetInputMode(window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSwapInterval(1); // cap 60 fps
+	glfwSetWindowUserPointer(window->getWindow(), this);
+	glfwSetMouseButtonCallback(window->getWindow(), mouseButtonPressedCallback);
 	
 }
 

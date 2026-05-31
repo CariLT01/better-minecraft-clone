@@ -2,6 +2,17 @@
 
 #include <glm/glm.hpp>
 
+enum CardinalDirection {
+	UP,
+	DOWN,
+	FRONT,
+	BACK,
+	LEFT,
+	RIGHT
+};
+
+glm::vec3 cardinalDirectionToVector(CardinalDirection direction);
+
 class Camera {
 public:
 	Camera(float aspectRatio, float near, float far, float fov);
@@ -20,6 +31,8 @@ public:
 
 
 	void moveLocal(const glm::vec3& localOffset);
+
+	CardinalDirection getCardinalFacingDirection();
 
 private:
 	glm::vec3 position;
