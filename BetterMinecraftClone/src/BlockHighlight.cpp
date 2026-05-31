@@ -95,5 +95,7 @@ void BlockHighlight::render(Camera* camera) {
 	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(camera->getProjection()));
 
 	glBindVertexArray(vao);
+	glLineWidth(2.0f);
 	glDrawArrays(GL_LINES, 0, verticesCount);
+	glLineWidth(1.0f);
 }
