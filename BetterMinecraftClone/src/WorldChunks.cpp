@@ -8,7 +8,7 @@
 
 WorldChunks::WorldChunks(ShaderProgram* terrainShaderProgram, TextureArray* textureAtlas) : chunkMap(), loadedChunks(), pendingChunks(), chunkOffsets(), chunkMeshesMap(), chunkBuilder(new ChunkBuilder()),
 terrainShaderProgram(terrainShaderProgram), textureAtlas(textureAtlas), numTextures(getRuntimeBlockTypes().uniqueTextures.size()),
-scheduler(new ChunkBuilderWorkerScheduler(8)), worldGenScheduler(new WorldGeneratorScheduler(8)) {
+scheduler(new ChunkBuilderWorkerScheduler(THREAD_COUNT)), worldGenScheduler(new WorldGeneratorScheduler(THREAD_COUNT)) {
 	precomputeChunkOffsets();
 
 }  
@@ -38,28 +38,36 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		worldGenScheduler->clearResults();
 	}
 
+	unsigned int queueSize;
 
-	std::optional<ChunkPos> nextChunkToLoad = getNextChunkToLoad(chunkPosition);
-	
-
-	if (!nextChunkToLoad.has_value()) {
-		std::cout << "No more chunks to load" << std::endl;
-		return;
+	{
+		std::unique_lock<std::mutex> lock(worldGenScheduler->getResultsMutex());
+		queueSize = worldGenScheduler->getQueueSize();
 	}
+	int available = static_cast<int>(THREAD_COUNT) - static_cast<int>(queueSize);
 
-	// Generate chunk if it doesn't exist
-	if (chunkMap.find(nextChunkToLoad.value()) == chunkMap.end()) {
+	while (available > 0) {
+		std::optional<ChunkPos> nextChunkToLoad = getNextChunkToLoad(chunkPosition);
 
-		ChunkPos pos = nextChunkToLoad.value();
 
-		worldGenScheduler->addTask({
-			pos.x, pos.y, pos.z
-			});
+		if (!nextChunkToLoad.has_value()) {
+			std::cout << "No more chunks to load" << std::endl;
+			return;
+		}
 
-		generatingChunks.insert(pos);
+		// Generate chunk if it doesn't exist
+		if (chunkMap.find(nextChunkToLoad.value()) == chunkMap.end()) {
+
+			ChunkPos pos = nextChunkToLoad.value();
+
+			worldGenScheduler->addTask({
+				pos.x, pos.y, pos.z
+				});
+
+			generatingChunks.insert(pos);
+			available -= 1;
+		}
 	}
-
-
 
 
 	std::unordered_set<ChunkPos, ChunkPosHash> chunksToRemove;
@@ -221,4 +229,21 @@ void WorldChunks::render(Camera* camera) {
 	for (const auto& [pos, mesh] : chunkMeshesMap) {
 		mesh->render(camera);
 	}
+}
+
+uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
+	glm::vec3 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
+	ChunkPos cposStruct = { cpos.x, cpos.y, cpos.z };
+
+	if (chunkMap.find(cposStruct) == chunkMap.end()) {
+		return 0;
+	}
+
+	Chunk* c = chunkMap[cposStruct];
+
+	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int lz = (z % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+
+	return c->getBlockAt(getIndex(lx, ly, lz));
 }

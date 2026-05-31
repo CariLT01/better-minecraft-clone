@@ -4,7 +4,7 @@
 #include <iostream>
 #include <array>
 
-Game::Game() {
+Game::Game() : blockHighlight(new BlockHighlight()) {
 
 }
 
@@ -60,6 +60,7 @@ void Game::tick() {
 	camera->update(x, y);
 
 	worldChunks->update(camera->getPosition());
+	blockHighlight->update(camera, worldChunks);
 
 }
 
@@ -68,6 +69,7 @@ void Game::render() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	worldChunks->render(camera);
+	blockHighlight->render(camera);
 
 	// end
 	window->update();
@@ -89,6 +91,8 @@ void Game::initialize() {
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glFrontFace(GL_CCW);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // DEBUG: WIREFRAME
 
 	glViewport(0, 0, window->getWidth(), window->getHeight());
@@ -98,6 +102,7 @@ void Game::initialize() {
 	createShaders();
 	loadTextures();
 	createWorld();
+	blockHighlight->initialize();
 	
 
 

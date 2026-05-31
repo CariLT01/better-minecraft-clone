@@ -1,3 +1,5 @@
+#pragma once
+
 #include <functional>
 #include <unordered_set>
 #include "Chunk.h"
@@ -39,6 +41,8 @@ public:
     
     void update(glm::vec3 playerPosition);
     void render(Camera* camera);
+
+    uint8_t getBlockAt(int x, int y, int z);
 
 private:
     std::unordered_map<ChunkPos, Chunk*, ChunkPosHash> chunkMap;

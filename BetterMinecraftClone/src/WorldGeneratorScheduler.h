@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <thread>
 #include <queue>
@@ -30,6 +32,10 @@ public:
 
 	std::vector<WorldGenTaskResult> getResults();
 	void clearResults();
+
+	unsigned int getQueueSize() {
+		return queue.size();
+	}
 
 private:
 	std::vector<std::thread> workers;

@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 #include <thread>
 #include <mutex>
@@ -6,8 +8,8 @@
 #include <memory>
 #include "ChunkMesh.h"
 #include "ChunkBuilder.h"
-
-struct Result {
+ 
+struct Result {  
 	std::vector<Vertex> vertices;
 	int x;
 	int y;

@@ -7,10 +7,10 @@
 #include "ShaderProgram.h"
 #include "WorldChunks.h"
 #include "TextureLoader.h"
-
+#include "BlockHighlight.h"
 
 class Game {
-public:
+public: 
 	Game();
 	void run();
 
@@ -19,7 +19,7 @@ private:
 	void createWindow();
 
 	void render();
-	void tick();
+	void tick(); 
 
 	Window* window;
 
@@ -28,7 +28,7 @@ private:
 	ShaderProgram* terrainRendererShaderProgram;
 
 	WorldChunks* worldChunks;
-	
+	BlockHighlight* blockHighlight;
 
 	// camera
 	Camera* camera;

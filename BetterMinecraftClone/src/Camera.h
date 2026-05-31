@@ -14,6 +14,9 @@ public:
 	glm::vec3 getPosition() {
 		return position;
 	}
+	glm::vec3 getFront() {
+		return front;
+	}
 
 
 	void moveLocal(const glm::vec3& localOffset);
