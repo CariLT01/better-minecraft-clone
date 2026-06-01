@@ -36,18 +36,18 @@ struct ChunkPosHash {
 
 class WorldChunks {
 public:
-	WorldChunks(ShaderProgram* terrainShaderProgram, TextureArray* textureAtlas);
+	WorldChunks(std::shared_ptr<ShaderProgram> terrainShaderProgram, std::shared_ptr<TextureArray> textureAtlas);
 	~WorldChunks();
     
     void update(glm::vec3 playerPosition);
-    void render(Camera* camera);
+    void render(std::shared_ptr<Camera> camera);
 
     uint8_t getBlockAt(int x, int y, int z);
     void setBlockAt(int x, int y, int z, uint8_t blockType);
 
 private:
-    std::unordered_map<ChunkPos, Chunk*, ChunkPosHash> chunkMap;
-    std::unordered_map<ChunkPos, ChunkMesh*, ChunkPosHash> chunkMeshesMap;
+    std::unordered_map<ChunkPos, std::shared_ptr<Chunk>, ChunkPosHash> chunkMap;
+    std::unordered_map<ChunkPos, std::shared_ptr<ChunkMesh>, ChunkPosHash> chunkMeshesMap;
 
     std::unordered_set<ChunkPos, ChunkPosHash> loadedChunks;
     std::unordered_set<ChunkPos, ChunkPosHash> loadingChunks;
@@ -58,7 +58,7 @@ private:
     std::array<ChunkPos, RENDER_DISTANCE_VOLUME> chunkOffsets;
 
     void precomputeChunkOffsets();
-    Chunk* generateChunk(const ChunkPos& pos);
+    std::shared_ptr<Chunk> generateChunk(const ChunkPos& pos);
 
     bool isReadyToBuild(const ChunkPos& pos);
 
@@ -66,20 +66,19 @@ private:
 
     std::optional<ChunkPos> getNextChunkToLoad(const glm::vec3& playerChunkPos);
 
-    ChunkBuilder* chunkBuilder;
+    std::shared_ptr<ShaderProgram> terrainShaderProgram;
+    std::shared_ptr<TextureArray> textureAtlas;
 
-    ShaderProgram* terrainShaderProgram;
-    TextureArray* textureAtlas;
-
-    WorldGeneratorScheduler* worldGenScheduler;
+    std::unique_ptr<WorldGeneratorScheduler> worldGenScheduler;
 
     unsigned int numTextures;
 
-    ChunkBuilderWorkerScheduler* scheduler;
+    std::unique_ptr<ChunkBuilderWorkerScheduler> scheduler;
 
     void remeshChunk(const ChunkPos& pos);
 
     // Remesh with a block modification coordinate
     void remeshModified(const ChunkPos& pos, int modificationX, int modificationY, int modificationZ);
     
+    std::unordered_set<ChunkPos, ChunkPosHash> shouldBeLoadedLookup;
 };

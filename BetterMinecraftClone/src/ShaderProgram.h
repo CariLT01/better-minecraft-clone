@@ -2,10 +2,11 @@
 
 #include <vector>
 #include "Shader.h"
+#include <memory>
 
 class ShaderProgram {
 public:
-	ShaderProgram(const std::vector<Shader*> shaders);
+	ShaderProgram(const std::vector<std::shared_ptr<Shader>> shaders);
 	~ShaderProgram();
 
 	void use();

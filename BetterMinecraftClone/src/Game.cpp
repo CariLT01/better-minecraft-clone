@@ -3,8 +3,13 @@
 #include "ChunkBuilder.h"
 #include <iostream>
 #include <array>
+#include <memory>
 
 Game::Game() : blockHighlight(new BlockHighlight()) {
+
+}
+
+Game::~Game() {
 
 }
 
@@ -48,7 +53,7 @@ void Game::mouseButtonPressedCallback(GLFWwindow* window, int button, int action
 }
 
 void Game::createWindow() {
-	window = new Window(800, 600, "Better Minecraft Clone r3");
+	window = std::make_shared<Window>(800, 600, "Better Minecraft Clone r3");
 	glfwSetInputMode(window->getWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 	glfwSwapInterval(1); // cap 60 fps
 	glfwSetWindowUserPointer(window->getWindow(), this);
@@ -119,7 +124,7 @@ void Game::initialize() {
 
 	glViewport(0, 0, window->getWidth(), window->getHeight());
 
-	camera = new Camera((float)window->getWidth() / window->getHeight(), 0.1f, 10000.0f, 70.0f);
+	camera = std::make_shared<Camera>((float)window->getWidth() / window->getHeight(), 0.1f, 10000.0f, 70.0f);
 
 	createShaders();
 	loadTextures();
@@ -131,17 +136,20 @@ void Game::initialize() {
 }
 
 void Game::createShaders() {
-	Shader* vertexShader = new Shader("shaders/terrain.vert", GL_VERTEX_SHADER);
-	Shader* fragmentShader = new Shader("shaders/terrain.frag", GL_FRAGMENT_SHADER);
-	terrainRendererShaderProgram = new ShaderProgram({ vertexShader, fragmentShader });
+	std::shared_ptr<Shader> vertexShader = std::make_shared<Shader>(static_cast<const char*>("shaders/terrain.vert"), static_cast<unsigned int>(GL_VERTEX_SHADER));
+	std::shared_ptr<Shader> fragmentShader = std::make_shared<Shader>(static_cast<const char*>("shaders/terrain.frag"), static_cast<unsigned int>(GL_FRAGMENT_SHADER));
+
+	std::vector<std::shared_ptr<Shader>> shaders = { vertexShader, fragmentShader };
+
+	terrainRendererShaderProgram = std::make_shared<ShaderProgram>(shaders);
 }
 
 void Game::createWorld() {
-	worldChunks = new WorldChunks(terrainRendererShaderProgram, textureAtlas);
+	worldChunks = std::make_shared<WorldChunks>(terrainRendererShaderProgram, textureAtlas);
 }
 
 void Game::loadTextures() {
-	TextureLoader* loader = new TextureLoader(16);
+	std::unique_ptr<TextureLoader> loader = std::make_unique<TextureLoader>(16);
 	CompileTimeResult result = getRuntimeBlockTypes();
 	for (std::string texture : result.uniqueTextures) {
 		if (texture == "") break;
@@ -150,7 +158,7 @@ void Game::loadTextures() {
 	}
 	AtlasResult atlasRes = loader->buildAtlas();
 	
-	textureAtlas = new TextureArray();
+	textureAtlas = std::make_shared<TextureArray>();
 	for (const std::string texturePath : getRuntimeBlockTypes().uniqueTextures) {
 		if (texturePath == "") break;
 		textureAtlas->addTexture(textureAtlas->loadTexture(texturePath));
@@ -158,6 +166,4 @@ void Game::loadTextures() {
 	textureAtlas->create();
 
 	std::cout << "All textures loaded" << std::endl;
-
-	delete loader;
 }

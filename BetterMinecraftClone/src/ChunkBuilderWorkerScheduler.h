@@ -26,6 +26,7 @@ struct QueuedTask {
 class ChunkBuilderWorkerScheduler {
 public:
 	ChunkBuilderWorkerScheduler(const size_t threadCount);
+	~ChunkBuilderWorkerScheduler();
 
 	void addQueue(QueuedTask task);
 	std::vector<Result> getResults();
@@ -48,6 +49,8 @@ private:
 
 	std::condition_variable cv;
 
-	ChunkBuilder* chunkBuilder;
+	std::shared_ptr<ChunkBuilder> chunkBuilder;
+
+	std::atomic<bool> stopRequested;
 
 };

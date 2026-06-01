@@ -29,6 +29,10 @@ ChunkBuilder::ChunkBuilder() {
     buildAoData();
 }
 
+ChunkBuilder::~ChunkBuilder() {
+
+}
+
 unsigned int ChunkBuilder::getAoIndex(int x, int y, int z, unsigned int face) {
     return (((x * 3 * 3) + y * 3) + z) * 6 + face;
 }
@@ -47,7 +51,7 @@ std::vector<Vertex> ChunkBuilder::buildChunkMeshData(const ChunkDataInput& chunk
 
 	// std::cout << "Rebuild" << std::endl;
 
-	Chunk* chunkData = chunkDataIn.chunkData;
+	std::shared_ptr<Chunk> chunkData = chunkDataIn.chunkData;
 
 	std::vector<Vertex> vertices;
     vertices.reserve(4096);
@@ -179,7 +183,7 @@ void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockTy
 }
 
 bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int x, int y, int z) {
-    Chunk* chunkDataToCheck = chunkData.chunkData;
+    std::shared_ptr<Chunk> chunkDataToCheck = chunkData.chunkData;
 
     // 1. Check X Boundaries independently
     if (x >= static_cast<int>(CHUNK_SIZE)) {

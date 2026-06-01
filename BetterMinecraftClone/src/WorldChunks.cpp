@@ -6,12 +6,17 @@
 #include <algorithm>
 #include <optional>
 
-WorldChunks::WorldChunks(ShaderProgram* terrainShaderProgram, TextureArray* textureAtlas) : chunkMap(), loadedChunks(), pendingChunks(), chunkOffsets(), chunkMeshesMap(), chunkBuilder(new ChunkBuilder()),
+WorldChunks::WorldChunks(std::shared_ptr<ShaderProgram> terrainShaderProgram, std::shared_ptr<TextureArray> textureAtlas) : chunkMap(), loadedChunks(), pendingChunks(), chunkOffsets(), chunkMeshesMap(),
 terrainShaderProgram(terrainShaderProgram), textureAtlas(textureAtlas), numTextures(getRuntimeBlockTypes().uniqueTextures.size()),
 scheduler(new ChunkBuilderWorkerScheduler(THREAD_COUNT)), worldGenScheduler(new WorldGeneratorScheduler(THREAD_COUNT)) {
 	precomputeChunkOffsets();
+	shouldBeLoadedLookup.reserve(RENDER_DISTANCE_VOLUME);
 
 }  
+
+WorldChunks::~WorldChunks() {
+
+}
 
 
 void WorldChunks::update(glm::vec3 playerPosition) {
@@ -22,7 +27,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	{
 		std::unique_lock<std::mutex> lock(worldGenScheduler->getResultsMutex());
 		for (const WorldGenTaskResult& res : worldGenScheduler->getResults()) {
-			Chunk* newChunk = res.chunk;
+			std::shared_ptr<Chunk> newChunk = res.chunk;
 			ChunkPos currentCpos = { res.x, res.y, res.z };
 
 			chunkMap[currentCpos] = newChunk;
@@ -92,19 +97,21 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	{
 		std::unique_lock<std::mutex> lock(scheduler->getFinishedTasksMutex());
 		for (const Result& taskResult : scheduler->getResults()) {
-			if (taskResult.vertices.size() <= 0) continue;
-
 			ChunkPos currentPos = { taskResult.x, taskResult.y, taskResult.z };
+
+			if (taskResult.vertices.size() <= 0) {
+				loadingChunks.erase(currentPos);
+				loadedChunks.insert(currentPos);
+				continue;
+			}
 
 			// check if chunk already exists
 			if (chunkMeshesMap.find(currentPos) != chunkMeshesMap.end()) {
 				// delete it
-				delete chunkMeshesMap[currentPos];
 				chunkMeshesMap.erase(currentPos);
 			}
 
-
-			ChunkMesh* chunkMesh = new ChunkMesh(taskResult.vertices, {}, { terrainShaderProgram, textureAtlas, numTextures }, glm::vec3(taskResult.x, taskResult.y, taskResult.z) * glm::vec3(CHUNK_SIZE));
+			std::shared_ptr<ChunkMesh> chunkMesh = std::make_shared<ChunkMesh>(taskResult.vertices, std::vector<unsigned int>{}, RenderingContext{ terrainShaderProgram, textureAtlas, numTextures }, glm::vec3(taskResult.x, taskResult.y, taskResult.z) * glm::vec3(CHUNK_SIZE));
 			chunkMeshesMap[currentPos] = chunkMesh;
 			loadingChunks.erase(currentPos);
 			loadedChunks.insert(currentPos);
@@ -116,7 +123,8 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	// Handle unloading
 
 	// Build a fast lookup of should be currently loaded chunks
-	std::unordered_set<ChunkPos, ChunkPosHash> shouldBeLoadedLookup;
+	
+	shouldBeLoadedLookup.clear();
 
 	for (unsigned int i = 0; i < RENDER_DISTANCE_VOLUME; i++) {
 		ChunkPos candidatePos = {
@@ -127,29 +135,29 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		shouldBeLoadedLookup.insert(candidatePos);
 	}
 
-	for (const ChunkPos& pos : loadedChunks) {
+	for (auto it = chunkMap.begin(); it != chunkMap.end(); ) {
+		ChunkPos pos = it->first;
 		// check if it's in chunk offsets
 		if (shouldBeLoadedLookup.find(pos) == shouldBeLoadedLookup.end()) {
 			// Unload it
-			delete chunkMeshesMap[pos];
 			chunkMeshesMap.erase(pos);
-			delete chunkMap[pos];
 			loadingChunks.erase(pos);
 			pendingChunks.erase(pos);
 			generatingChunks.erase(pos);
-			chunkMap.erase(pos); // TODO: don't erase, but store on disk or something
-			chunksToRemove.insert(pos);
+			loadedChunks.erase(pos);
+			it = chunkMap.erase(it);
+		}
+		else {
+			++it;
 		}
 	}
-	for (const ChunkPos& pos : chunksToRemove) {
-		loadedChunks.erase(pos);
-	}
+
 
 	
 }
 
 void WorldChunks::buildChunkMesh(const ChunkPos& pos) {
-	Chunk* chunkData = chunkMap[pos];
+	std::shared_ptr<Chunk> chunkData = chunkMap[pos];
 
 	std::unique_ptr<ChunkDataInput> chunkDataIn = std::make_unique<ChunkDataInput>(ChunkDataInput{
 		.chunkData = chunkData,
@@ -232,7 +240,7 @@ std::optional<ChunkPos> WorldChunks::getNextChunkToLoad(const glm::vec3& playerC
 	return std::nullopt;
 }
 
-void WorldChunks::render(Camera* camera) {
+void WorldChunks::render(std::shared_ptr < Camera> camera) {
 
 	for (const auto& [pos, mesh] : chunkMeshesMap) {
 		mesh->render(camera);
@@ -254,7 +262,7 @@ uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 		return 0;
 	}
 
-	Chunk* c = chunkMap[cposStruct];
+	std::shared_ptr<Chunk> c = chunkMap[cposStruct];
 
 	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
 	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
@@ -273,7 +281,7 @@ void WorldChunks::setBlockAt(int x, int y, int z, uint8_t blockType) {
 		return;
 	}
 
-	Chunk* c = chunkMap[cposStruct];
+	std::shared_ptr<Chunk> c = chunkMap[cposStruct];
 
 	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
 	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;

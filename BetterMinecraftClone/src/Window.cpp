@@ -5,6 +5,11 @@ Window::Window(int width, int height, const char* title) : width(width), height(
 	createWindow();
 }
 
+Window::~Window() {
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
 void Window::createWindow() {
 	if (!glfwInit()) {
 		std::cerr << "Failed to initialize GLFW " << std::endl;

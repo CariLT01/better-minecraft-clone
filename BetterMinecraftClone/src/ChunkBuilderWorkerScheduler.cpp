@@ -1,22 +1,36 @@
 #include "ChunkBuilderWorkerScheduler.h"
 #include <iostream>
 
-ChunkBuilderWorkerScheduler::ChunkBuilderWorkerScheduler(const size_t threadCount) : chunkBuilder(new ChunkBuilder()) {
+ChunkBuilderWorkerScheduler::ChunkBuilderWorkerScheduler(const size_t threadCount) : chunkBuilder(std::make_shared<ChunkBuilder>()) {
 	for (size_t i = 0; i < threadCount; i++) {
 
 		workers.emplace_back(&ChunkBuilderWorkerScheduler::queueLoop, this, i);
 	}
 }
 
+ChunkBuilderWorkerScheduler::~ChunkBuilderWorkerScheduler() {
+	stopRequested.store(true);
+	cv.notify_all();
+
+	for (auto& worker : workers) {
+		std::cout << "Waiting for worker to join" << std::endl;
+		worker.join();
+	}
+}
+
 void ChunkBuilderWorkerScheduler::queueLoop(int threadId) {
-	while (true) {
+	while (!stopRequested) {
 		QueuedTask itemToProcess;
 		{
 			std::unique_lock<std::mutex> lock(queueMutex);
 
 			cv.wait(lock, [this]() {
-				return !queuedTasks.empty();
+				return !queuedTasks.empty() || stopRequested;
 				});
+
+			if (stopRequested && queuedTasks.empty()) {
+				break;
+			}
 
 			itemToProcess = std::move(queuedTasks.front());
 			queuedTasks.pop();

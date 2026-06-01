@@ -8,10 +8,12 @@
 #include "WorldChunks.h"
 #include "TextureLoader.h"
 #include "BlockHighlight.h"
+#include <memory>
 
 class Game {
 public: 
 	Game();
+	~Game();
 	void run();
 
 private:
@@ -23,18 +25,18 @@ private:
 
 	static void mouseButtonPressedCallback(GLFWwindow* window, int button, int action, int mods);
 
-	Window* window;
+	std::shared_ptr<Window> window;
 
 	bool running = false;
 
-	ShaderProgram* terrainRendererShaderProgram;
+	std::shared_ptr<ShaderProgram> terrainRendererShaderProgram;
 
-	WorldChunks* worldChunks;
-	BlockHighlight* blockHighlight;
+	std::shared_ptr<WorldChunks> worldChunks;
+	std::shared_ptr<BlockHighlight> blockHighlight;
 
 	// camera
-	Camera* camera;
-	TextureArray* textureAtlas;
+	std::shared_ptr<Camera> camera;
+	std::shared_ptr<TextureArray> textureAtlas;
 
 	void createShaders();
 	void createWorld();

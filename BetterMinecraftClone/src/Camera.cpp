@@ -6,6 +6,10 @@ Camera::Camera(float ratio, float near, float far, float fov) : position(), proj
 	initialize();
 }
 
+Camera::~Camera() {
+
+}
+
 void Camera::initialize() {
 
 }

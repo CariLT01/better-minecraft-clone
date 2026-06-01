@@ -6,14 +6,17 @@ BlockHighlight::BlockHighlight() {
 
 }
 
+BlockHighlight::~BlockHighlight() {
+	glDeleteBuffers(1, &vbo);
+	glDeleteVertexArrays(1, &vao);
+}
+
 void BlockHighlight::initializeShaders() {
-	Shader* vertexShader = new Shader("shaders/block_highlight.vert", GL_VERTEX_SHADER);
-	Shader* fragmentShader = new Shader("shaders/block_highlight.frag", GL_FRAGMENT_SHADER);
+	std::shared_ptr<Shader> vertexShader = std::make_shared<Shader>("shaders/block_highlight.vert", GL_VERTEX_SHADER);
+	std::shared_ptr<Shader> fragmentShader = std::make_shared<Shader>("shaders/block_highlight.frag", GL_FRAGMENT_SHADER);
 
-	shaderProgram = new ShaderProgram({ vertexShader, fragmentShader });
+	shaderProgram = std::make_shared<ShaderProgram>(std::vector<std::shared_ptr<Shader>>{ vertexShader, fragmentShader });
 
-	delete vertexShader;
-	delete fragmentShader;
 }
 
 void BlockHighlight::initializeMesh() {
@@ -34,7 +37,7 @@ void BlockHighlight::initialize() {
 	initializeMesh();
 }
 
-void BlockHighlight::update(Camera* camera, WorldChunks* chunks) {
+void BlockHighlight::update(std::shared_ptr<Camera> camera, std::shared_ptr<WorldChunks> chunks) {
 	// TODO: replace with DDA algorithm
 
 	float stepSize = 0.05f;
@@ -99,7 +102,7 @@ void BlockHighlight::update(Camera* camera, WorldChunks* chunks) {
 
 }
 
-void BlockHighlight::render(Camera* camera) {
+void BlockHighlight::render(std::shared_ptr < Camera> camera) {
 
 	if (!hit) return;
 

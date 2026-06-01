@@ -2,9 +2,9 @@
 #include <glad/glad.h>
 #include <iostream>
 
-ShaderProgram::ShaderProgram(const std::vector<Shader*> shaders) {
+ShaderProgram::ShaderProgram(const std::vector<std::shared_ptr<Shader>> shaders) {
 	program = glCreateProgram();
-	for (Shader* shader : shaders) {
+	for (std::shared_ptr<Shader> shader : shaders) {
 		glAttachShader(program, shader->getShader());
 	}
 	glLinkProgram(program);

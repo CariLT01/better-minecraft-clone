@@ -1,15 +1,16 @@
 #include "ChunkMesh.h"
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <memory>
 
-ChunkMesh::ChunkMesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices, const RenderingContext& context, glm::vec3 offset) :
-vertices(vertices), indices(indices), context(context), offset(offset) {
+ChunkMesh::ChunkMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, const RenderingContext& context, glm::vec3 offset) :
+vertices(vertices), indices(indices), context(context), offset(offset), size(vertices.size()) {
 	createMesh();
 }
 
 ChunkMesh::~ChunkMesh() {
 	glDeleteBuffers(1, &vbo);
-	glDeleteBuffers(1, &vao);
+	glDeleteVertexArrays(1, &vao);
 }
 
 void ChunkMesh::createMesh() {
@@ -35,9 +36,16 @@ void ChunkMesh::createMesh() {
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
 
+	// upload is complete, clear memory
+	vertices.clear();
+	vertices.shrink_to_fit();
+
+	indices.clear();
+	indices.shrink_to_fit();
+
 }
 
-void ChunkMesh::render(Camera* camera) {
+void ChunkMesh::render(std::shared_ptr < Camera> camera) {
 	context.shaderProgram->use();
 	glActiveTexture(GL_TEXTURE0);
 	context.textureAtlas->bind();
@@ -54,6 +62,6 @@ void ChunkMesh::render(Camera* camera) {
 	glUniform1i(totalTexturesLoc, context.numTextures);
 
 	glBindVertexArray(vao);
-	glDrawArrays(GL_TRIANGLES, 0, vertices.size());
+	glDrawArrays(GL_TRIANGLES, 0, size);
 }
 

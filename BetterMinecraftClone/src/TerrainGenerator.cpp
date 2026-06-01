@@ -41,7 +41,7 @@ void TerrainGenerator::returnToPool(BufferType* rawPtr) {
 	}
 }
 
-Chunk* TerrainGenerator::generateChunk(int cx, int cy, int cz) {
+std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cy, int cz) {
 
 	float scale = 1.5f; // original: 1.5f
 	int chunkSizeInt = static_cast<int>(CHUNK_SIZE);
@@ -70,7 +70,7 @@ Chunk* TerrainGenerator::generateChunk(int cx, int cy, int cz) {
 	simplex->GenUniformGrid3D(gridArray4.data(), cx * chunkSizeInt * caveScaleHF, cy * chunkSizeInt * caveScaleHF, cz * chunkSizeInt * caveScaleHF, chunkSizeInt, chunkSizeInt, chunkSizeInt, caveScaleHF, caveScaleHF, caveScaleHF, 50);
 
 
-	Chunk* chunk = new Chunk();
+	std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
 	for (int x = 0; x < CHUNK_SIZE; x++) {
 		for (int z = 0; z < CHUNK_SIZE; z++) {
 

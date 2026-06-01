@@ -6,6 +6,7 @@
 class TextureArray {
 public:
 	TextureArray();
+	~TextureArray();
 	
 	void addTexture(std::vector<unsigned char> textureData);
 	std::vector<unsigned char> loadTexture(const std::string& path);

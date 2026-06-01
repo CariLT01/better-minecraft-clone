@@ -29,11 +29,12 @@ constexpr float vertices[verticesCount] = {
 class BlockHighlight {
 public:
 	BlockHighlight();
+	~BlockHighlight();
 
 	void initialize();
-	void render(Camera* camera);
+	void render(std::shared_ptr<Camera> camera);
 
-	void update(Camera* camera, WorldChunks* chunks);
+	void update(std::shared_ptr<Camera> camera, std::shared_ptr<WorldChunks> chunks);
 
     glm::vec3 getHitPos() {
         return offset;
@@ -53,7 +54,7 @@ private:
 	unsigned int vbo;
 	unsigned int vao;
 
-	ShaderProgram* shaderProgram;
+	std::shared_ptr<ShaderProgram> shaderProgram;
 
 	glm::vec3 offset;
     glm::vec3 hitNormal;

@@ -14,7 +14,7 @@ struct WorldGenTask {
 };
 
 struct WorldGenTaskResult {
-	Chunk* chunk;
+	std::shared_ptr<Chunk> chunk;
 	int x;
 	int y;
 	int z;
@@ -23,6 +23,7 @@ struct WorldGenTaskResult {
 class WorldGeneratorScheduler {
 public:
 	WorldGeneratorScheduler(size_t numThreads);
+	~WorldGeneratorScheduler();
 
 	void addTask(const WorldGenTask& task);
 
@@ -49,9 +50,11 @@ private:
 
 	std::condition_variable cv;
 
-	Chunk* generateChunk(int x, int y, int z);
+	std::shared_ptr<Chunk> generateChunk(int x, int y, int z);
 
-	TerrainGenerator* generator;
+	std::shared_ptr<TerrainGenerator> generator;
+
+	std::atomic<bool> stopRequested{ false };
 
 
 };

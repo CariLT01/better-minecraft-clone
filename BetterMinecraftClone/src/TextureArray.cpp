@@ -9,6 +9,10 @@ TextureArray::TextureArray() : textures(), texture(0) {
 
 }
 
+TextureArray::~TextureArray() {
+	glDeleteTextures(1, &texture);
+}
+
 void TextureArray::create() {
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
@@ -37,6 +41,9 @@ void TextureArray::create() {
 
 	glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
 
+	textures.clear();
+	textures.shrink_to_fit();
+
 }
 
 void TextureArray::addTexture(std::vector<unsigned char> textureData) {
@@ -59,6 +66,8 @@ std::vector<unsigned char> TextureArray::loadTexture(const std::string& path) {
 	std::vector<unsigned char> imageDataVec = std::vector<unsigned char>(imageData, imageData + (w * h * 4));
 
 	std::cout << "Texture loaded: " << path << std::endl;
+
+	stbi_image_free(imageData);
 
 	return imageDataVec;
 

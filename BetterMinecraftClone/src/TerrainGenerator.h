@@ -11,7 +11,7 @@ class TerrainGenerator {
 public:
 	TerrainGenerator();
 
-	Chunk* generateChunk(int x, int y, int z);
+	std::shared_ptr<Chunk> generateChunk(int x, int y, int z);
 
 	using BufferType = std::array<float, CHUNK_VOLUME>;
 	using BorrowedBuffer = std::unique_ptr<BufferType, std::function<void(BufferType*)>>;
