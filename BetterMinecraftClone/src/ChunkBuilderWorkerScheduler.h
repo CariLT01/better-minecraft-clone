@@ -8,19 +8,16 @@
 #include <memory>
 #include "ChunkMesh.h"
 #include "ChunkBuilder.h"
+#include "Types.h"
  
 struct Result {  
 	std::vector<Vertex> vertices;
-	int x;
-	int y;
-	int z;
+	SectionPos pos;
 };
 
 struct QueuedTask {
 	std::unique_ptr<ChunkDataInput> input;
-	int x;
-	int y;
-	int z;
+	SectionPos pos;
 };
 
 class ChunkBuilderWorkerScheduler {

@@ -63,7 +63,7 @@ Result ChunkBuilderWorkerScheduler::buildChunk(const QueuedTask& task) {
 	std::vector<Vertex> vertices = chunkBuilder->buildChunkMeshData(*task.input);
 	return {
 		vertices,
-		task.x, task.y, task.z
+		task.pos
 	};
 }
 

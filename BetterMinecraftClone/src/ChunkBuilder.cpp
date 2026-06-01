@@ -51,18 +51,17 @@ std::vector<Vertex> ChunkBuilder::buildChunkMeshData(const ChunkDataInput& chunk
 
 	// std::cout << "Rebuild" << std::endl;
 
-	std::shared_ptr<Chunk> chunkData = chunkDataIn.chunkData;
+	std::shared_ptr<ChunkSectionView> chunkData = chunkDataIn.chunkData;
 
 	std::vector<Vertex> vertices;
     vertices.reserve(4096);
 
-    for (unsigned int i = 0; i < CHUNK_VOLUME; i++) {
-        glm::vec3 blockPos = getXYZ(i);
+    for (unsigned int i = 0; i < SECTION_VOLUME; i++) {
+        glm::ivec3 blockPos = getSectionXYZ(i);
         const int x = blockPos.x;
         const int y = blockPos.y;
         const int z = blockPos.z;
-		int blockIndex = getIndex(x, y, z);
-        uint8_t blockType = chunkData->getBlockAt(blockIndex);
+        uint8_t blockType = chunkData->getBlockAt(x, y, z);
 		if (blockType == 0) continue;
 		for (int face = 0; face < 6; face++) {
 			if (!isVoid(chunkDataIn, x + faceOffsetLookup[face * 3 + 0], y + faceOffsetLookup[face * 3 + 1], z + faceOffsetLookup[face * 3 + 2])) continue;
@@ -183,36 +182,36 @@ void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockTy
 }
 
 bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int x, int y, int z) {
-    std::shared_ptr<Chunk> chunkDataToCheck = chunkData.chunkData;
+    std::shared_ptr<ChunkSectionView> chunkDataToCheck = chunkData.chunkData;
 
     // 1. Check X Boundaries independently
-    if (x >= static_cast<int>(CHUNK_SIZE)) {
+    if (x >= static_cast<int>(SECTION_SIZE)) {
         chunkDataToCheck = chunkData.right;
-        x -= CHUNK_SIZE;
+        x -= SECTION_SIZE;
     }
     else if (x < 0) {
         chunkDataToCheck = chunkData.left;
-        x += CHUNK_SIZE;
+        x += SECTION_SIZE;
     }
 
     // 2. Check Y Boundaries independently 
-    if (y >= static_cast<int>(CHUNK_SIZE)) {
+    if (y >= static_cast<int>(SECTION_SIZE)) {
         chunkDataToCheck = chunkData.top;
-        y -= CHUNK_SIZE;
+        y -= SECTION_SIZE;
     }
     else if (y < 0) {
         chunkDataToCheck = chunkData.bottom;
-        y += CHUNK_SIZE;
+        y += SECTION_SIZE;
     }
 
     // 3. Check Z Boundaries independently
-    if (z >= static_cast<int>(CHUNK_SIZE)) {
+    if (z >= static_cast<int>(SECTION_SIZE)) {
         chunkDataToCheck = chunkData.front;
-        z -= CHUNK_SIZE;
+        z -= SECTION_SIZE;
     }
     else if (z < 0) {
         chunkDataToCheck = chunkData.back;
-        z += CHUNK_SIZE;
+        z += SECTION_SIZE;
     }
 
     // 4. Null safety guard (in case a neighboring chunk isn't loaded yet)
@@ -221,15 +220,12 @@ bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int x, int y, int z) 
     }
 
     // 5. Final boundary confirmation & lookup
-    if (x < 0 || x >= static_cast<int>(CHUNK_SIZE) ||
-        y < 0 || y >= static_cast<int>(CHUNK_SIZE) ||
-        z < 0 || z >= static_cast<int>(CHUNK_SIZE)) {
+    if (x < 0 || x >= static_cast<int>(SECTION_SIZE) ||
+        y < 0 || y >= static_cast<int>(SECTION_SIZE) ||
+        z < 0 || z >= static_cast<int>(SECTION_SIZE)) {
         return true;
     }
 
-    unsigned int index = getIndex(static_cast<unsigned int>(x),
-        static_cast<unsigned int>(y),
-        static_cast<unsigned int>(z));
 
-    return chunkDataToCheck->getBlockAt(index) == 0;
+    return chunkDataToCheck->getBlockAt(x, y, z) == 0;
 }

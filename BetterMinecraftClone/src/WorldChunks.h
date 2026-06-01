@@ -5,6 +5,7 @@
 #include "Chunk.h"
 #include <glm/glm.hpp>
 #include <optional>
+#include "ChunkSectionView.h"
 #include "ChunkMesh.h"
 #include "ChunkBuilder.h"
 #include "ShaderProgram.h"
@@ -12,27 +13,11 @@
 #include "TextureArray.h"
 #include "ChunkBuilderWorkerScheduler.h"
 #include "WorldGeneratorScheduler.h"
+#include "Types.h"
 
 constexpr unsigned int RENDER_DISTANCE_VOLUME = (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1);
 
-struct ChunkPos {
-    int x, y, z;
 
-    // Fast equality operator
-    bool operator==(const ChunkPos& other) const {
-        return x == other.x && y == other.y && z == other.z;
-    }
-};
-
-struct ChunkPosHash {
-    size_t operator()(const ChunkPos& pos) const {
-        size_t h1 = std::hash<int>{}(pos.x);
-        size_t h2 = std::hash<int>{}(pos.y);
-        size_t h3 = std::hash<int>{}(pos.z);
-        // Standard bit-shifting to combine hashes
-        return h1 ^ (h2 << 1) ^ (h3 << 2);
-    }
-};
 
 class WorldChunks {
 public:
@@ -47,24 +32,24 @@ public:
 
 private:
     std::unordered_map<ChunkPos, std::shared_ptr<Chunk>, ChunkPosHash> chunkMap;
-    std::unordered_map<ChunkPos, std::shared_ptr<ChunkMesh>, ChunkPosHash> chunkMeshesMap;
+    std::unordered_map<SectionPos, std::shared_ptr<ChunkSectionView>, SectionPosHash> chunkSections;
+    std::unordered_map<SectionPos, std::shared_ptr<ChunkMesh>, SectionPosHash> chunkMeshesMap;
 
-    std::unordered_set<ChunkPos, ChunkPosHash> loadedChunks;
-    std::unordered_set<ChunkPos, ChunkPosHash> loadingChunks;
-    std::unordered_set<ChunkPos, ChunkPosHash> pendingChunks;
+    std::unordered_set<SectionPos, SectionPosHash> loadedChunks;
+    std::unordered_set<SectionPos, SectionPosHash> loadingChunks;
+    std::unordered_set<SectionPos, SectionPosHash> pendingChunks;
     std::unordered_set<ChunkPos, ChunkPosHash> generatingChunks;
     
 
     std::array<ChunkPos, RENDER_DISTANCE_VOLUME> chunkOffsets;
 
     void precomputeChunkOffsets();
-    std::shared_ptr<Chunk> generateChunk(const ChunkPos& pos);
 
-    bool isReadyToBuild(const ChunkPos& pos);
+    bool isReadyToBuild(const SectionPos& pos);
 
-	void buildChunkMesh(const ChunkPos& pos);
+	void buildChunkMesh(const SectionPos& pos);
 
-    std::optional<ChunkPos> getNextChunkToLoad(const glm::vec3& playerChunkPos);
+    std::optional<ChunkPos> getNextChunkToLoad(const ChunkPos& pos);
 
     std::shared_ptr<ShaderProgram> terrainShaderProgram;
     std::shared_ptr<TextureArray> textureAtlas;
@@ -75,10 +60,10 @@ private:
 
     std::unique_ptr<ChunkBuilderWorkerScheduler> scheduler;
 
-    void remeshChunk(const ChunkPos& pos);
+    void remeshChunk(const SectionPos& pos);
 
     // Remesh with a block modification coordinate
-    void remeshModified(const ChunkPos& pos, int modificationX, int modificationY, int modificationZ);
+    void remeshModified(const SectionPos& pos, int modificationX, int modificationY, int modificationZ);
     
     std::unordered_set<ChunkPos, ChunkPosHash> shouldBeLoadedLookup;
 };

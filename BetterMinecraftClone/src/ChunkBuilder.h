@@ -4,6 +4,7 @@
 #include "config.h"
 #include "Chunk.h"
 #include "BlockTypes.h"
+#include "ChunkSectionView.h"
 #include <memory>
 
 struct LocalPos {
@@ -195,14 +196,14 @@ constexpr float uvTemplate[4 * 2] = {
 
 
 struct ChunkDataInput {
-	std::shared_ptr<Chunk> chunkData;
+	std::shared_ptr<ChunkSectionView> chunkData;
     // surrounding sides
-    std::shared_ptr<Chunk> front;
-    std::shared_ptr<Chunk> back;
-    std::shared_ptr<Chunk> left;
-    std::shared_ptr<Chunk> right;
-    std::shared_ptr<Chunk> top;
-    std::shared_ptr<Chunk> bottom;
+    std::shared_ptr<ChunkSectionView> front;
+    std::shared_ptr<ChunkSectionView> back;
+    std::shared_ptr<ChunkSectionView> left;
+    std::shared_ptr<ChunkSectionView> right;
+    std::shared_ptr<ChunkSectionView> top;
+    std::shared_ptr<ChunkSectionView> bottom;
 };
 
 class ChunkBuilder {

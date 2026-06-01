@@ -2,7 +2,7 @@
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 
-BlockHighlight::BlockHighlight() {
+BlockHighlight::BlockHighlight() : hit(false), hitNormal(glm::vec3(0.0f)), offset(glm::vec3(0.0f)), vao(0), vbo(0) {
 
 }
 

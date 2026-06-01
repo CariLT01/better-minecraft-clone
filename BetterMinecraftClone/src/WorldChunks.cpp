@@ -20,7 +20,7 @@ WorldChunks::~WorldChunks() {
 
 
 void WorldChunks::update(glm::vec3 playerPosition) {
-	glm::vec3 chunkPosition = realPositionToChunkPosition(playerPosition);
+	glm::ivec2 chunkPosition = realPositionToChunkPosition(playerPosition);
 
 	// Loop through chunks that are ready
 
@@ -28,15 +28,21 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		std::unique_lock<std::mutex> lock(worldGenScheduler->getResultsMutex());
 		for (const WorldGenTaskResult& res : worldGenScheduler->getResults()) {
 			std::shared_ptr<Chunk> newChunk = res.chunk;
-			ChunkPos currentCpos = { res.x, res.y, res.z };
+			ChunkPos currentCpos = res.pos;
 
 			chunkMap[currentCpos] = newChunk;
 
 			generatingChunks.erase(currentCpos);
 
 			// Add it to pending if not already in it
-			if (pendingChunks.find(currentCpos) == pendingChunks.end()) {
-				remeshChunk(currentCpos);
+			std::vector<ChunkSectionViewBuildData> results = ChunkSectionView::createChunkSectionViewsFromChunk(currentCpos, newChunk);
+			for (const auto& data : results) {
+				chunkSections[data.position] = data.view;
+				if (pendingChunks.find(data.position) == pendingChunks.end()) {
+					// std::cout << "Query for remeshing" << std::endl;
+					remeshChunk(data.position);
+				}
+				
 			}
 		}
 
@@ -52,7 +58,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	int available = static_cast<int>(THREAD_COUNT) - static_cast<int>(queueSize);
 
 	while (available > 0) {
-		std::optional<ChunkPos> nextChunkToLoad = getNextChunkToLoad(chunkPosition);
+		std::optional<ChunkPos> nextChunkToLoad = getNextChunkToLoad({chunkPosition.x, chunkPosition.y});
 
 
 		if (!nextChunkToLoad.has_value()) {
@@ -66,7 +72,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 			ChunkPos pos = nextChunkToLoad.value();
 
 			worldGenScheduler->addTask({
-				pos.x, pos.y, pos.z
+				pos.x, pos.z
 				});
 
 			generatingChunks.insert(pos);
@@ -75,10 +81,10 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	}
 
 
-	std::unordered_set<ChunkPos, ChunkPosHash> chunksToRemove;
+	std::unordered_set<SectionPos, SectionPosHash> chunksToRemove;
 
 	// Process already pending chunks
-	for (const ChunkPos& pendingPos : pendingChunks) {
+	for (const SectionPos& pendingPos : pendingChunks) {
 		if (isReadyToBuild(pendingPos)) {
 			buildChunkMesh(pendingPos);
 			loadingChunks.insert(pendingPos);
@@ -86,7 +92,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		}
 	}
 
-	for (const ChunkPos& pos : chunksToRemove) {
+	for (const SectionPos& pos : chunksToRemove) {
 		pendingChunks.erase(pos);
 	}
 
@@ -97,9 +103,12 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	{
 		std::unique_lock<std::mutex> lock(scheduler->getFinishedTasksMutex());
 		for (const Result& taskResult : scheduler->getResults()) {
-			ChunkPos currentPos = { taskResult.x, taskResult.y, taskResult.z };
+			SectionPos currentPos = taskResult.pos;
 
+			// std::cout << "Chunk has finished building" << std::endl;
+			
 			if (taskResult.vertices.size() <= 0) {
+				// std::cout << "Found empty chunk" << std::endl;
 				loadingChunks.erase(currentPos);
 				loadedChunks.insert(currentPos);
 				continue;
@@ -111,7 +120,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 				chunkMeshesMap.erase(currentPos);
 			}
 
-			std::shared_ptr<ChunkMesh> chunkMesh = std::make_shared<ChunkMesh>(taskResult.vertices, std::vector<unsigned int>{}, RenderingContext{ terrainShaderProgram, textureAtlas, numTextures }, glm::vec3(taskResult.x, taskResult.y, taskResult.z) * glm::vec3(CHUNK_SIZE));
+			std::shared_ptr<ChunkMesh> chunkMesh = std::make_shared<ChunkMesh>(taskResult.vertices, std::vector<unsigned int>{}, RenderingContext{ terrainShaderProgram, textureAtlas, numTextures }, glm::vec3(taskResult.pos.x, taskResult.pos.y, taskResult.pos.z) * glm::vec3(SECTION_SIZE));
 			chunkMeshesMap[currentPos] = chunkMesh;
 			loadingChunks.erase(currentPos);
 			loadedChunks.insert(currentPos);
@@ -129,8 +138,7 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	for (unsigned int i = 0; i < RENDER_DISTANCE_VOLUME; i++) {
 		ChunkPos candidatePos = {
 			chunkPosition.x + chunkOffsets[i].x,
-			chunkPosition.y + chunkOffsets[i].y,
-			chunkPosition.z + chunkOffsets[i].z
+			chunkPosition.y + chunkOffsets[i].z
 		};
 		shouldBeLoadedLookup.insert(candidatePos);
 	}
@@ -140,11 +148,20 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		// check if it's in chunk offsets
 		if (shouldBeLoadedLookup.find(pos) == shouldBeLoadedLookup.end()) {
 			// Unload it
-			chunkMeshesMap.erase(pos);
-			loadingChunks.erase(pos);
-			pendingChunks.erase(pos);
+
+			for (unsigned int i = 0; i < SECTION_COUNT; i++) {
+
+				SectionPos spos = { pos.x, i, pos.z };
+
+				chunkMeshesMap.erase(spos);
+				loadingChunks.erase(spos);
+				pendingChunks.erase(spos);
+				loadedChunks.erase(spos);
+				chunkSections.erase(spos);
+			}
+
 			generatingChunks.erase(pos);
-			loadedChunks.erase(pos);
+
 			it = chunkMap.erase(it);
 		}
 		else {
@@ -156,17 +173,17 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 	
 }
 
-void WorldChunks::buildChunkMesh(const ChunkPos& pos) {
-	std::shared_ptr<Chunk> chunkData = chunkMap[pos];
+void WorldChunks::buildChunkMesh(const SectionPos& pos) {
+	std::shared_ptr<ChunkSectionView> chunkData = chunkSections[pos];
 
 	std::unique_ptr<ChunkDataInput> chunkDataIn = std::make_unique<ChunkDataInput>(ChunkDataInput{
 		.chunkData = chunkData,
-		.front = chunkMap[{pos.x, pos.y, pos.z + 1}],
-		.back = chunkMap[{pos.x, pos.y, pos.z - 1}],
-		.left = chunkMap[{pos.x - 1, pos.y, pos.z}],
-		.right = chunkMap[{pos.x + 1, pos.y, pos.z}],
-		.top = chunkMap[{pos.x, pos.y + 1, pos.z}],
-		.bottom = chunkMap[{pos.x, pos.y - 1, pos.z}]
+		.front = chunkSections[{pos.x, pos.y, pos.z + 1}],
+		.back = chunkSections[{pos.x, pos.y, pos.z - 1}],
+		.left = chunkSections[{pos.x - 1, pos.y, pos.z}],
+		.right = chunkSections[{pos.x + 1, pos.y, pos.z}],
+		.top = chunkSections[{pos.x, pos.y + 1, pos.z}],
+		.bottom = chunkSections[{pos.x, pos.y - 1, pos.z}]
 	});
 
 	scheduler->addQueue({
@@ -184,14 +201,20 @@ constexpr int neighbors[6 * 3] = {
 	0, -1, 0 // bottom
 };
 
-bool WorldChunks::isReadyToBuild(const ChunkPos& pos) {
+bool WorldChunks::isReadyToBuild(const SectionPos& pos) {
 	for (unsigned int i = 0; i < 6; i++) {
-		ChunkPos neighborPos = {
+		if (i == 4 && pos.y == SECTION_COUNT - 1) {
+			continue;
+		}
+		if (i == 5 && pos.y == 0) {
+			continue;
+		}
+		SectionPos neighborPos = {
 			pos.x + neighbors[i * 3 + 0],
 			pos.y + neighbors[i * 3 + 1],
 			pos.z + neighbors[i * 3 + 2]
 		};
-		if (chunkMap.find(neighborPos) == chunkMap.end()) return false;
+		if (chunkSections.find(neighborPos) == chunkSections.end()) return false;
 	}
 	return true;
 }
@@ -204,7 +227,7 @@ void WorldChunks::precomputeChunkOffsets() {
 	for (int x = -s_render_distance; x < s_render_distance; x++) {
 		for (int y = -s_render_distance; y < s_render_distance; y++) {
 			for (int z = -s_render_distance; z < s_render_distance; z++) {
-				chunkOffsets[i] = { x, y, z };
+				chunkOffsets[i] = { x, z };
 				i++;
 			}
 		}
@@ -214,26 +237,23 @@ void WorldChunks::precomputeChunkOffsets() {
 	// This uses the total items populated (i) as the end boundary
 	std::sort(chunkOffsets.begin(), chunkOffsets.begin() + i, [](const ChunkPos& a, const ChunkPos& b) {
 		// Calculate squared distance (avoids expensive square root calculations)
-		int distSqA = (a.x * a.x) + (a.y * a.y) + (a.z * a.z);
-		int distSqB = (b.x * b.x) + (b.y * b.y) + (b.z * b.z);
+		int distSqA = (a.x * a.x) + (a.z * a.z);
+		int distSqB = (b.x * b.x) + (b.z * b.z);
 
 		return distSqA < distSqB;
 		});
 }
 
-std::optional<ChunkPos> WorldChunks::getNextChunkToLoad(const glm::vec3& playerChunkPos) {
+std::optional<ChunkPos> WorldChunks::getNextChunkToLoad(const ChunkPos& playerChunkPos) {
 	for (unsigned int i = 0; i < RENDER_DISTANCE_VOLUME; i++) {
 		// check if not already in loaded chunks
 		ChunkPos candidatePos = {
 			playerChunkPos.x + chunkOffsets[i].x,
-			playerChunkPos.y + chunkOffsets[i].y,
 			playerChunkPos.z + chunkOffsets[i].z
 		};
 
-		if (loadedChunks.find(candidatePos) != loadedChunks.end()) continue;
-		if (pendingChunks.find(candidatePos) != pendingChunks.end()) continue;
-		if (loadingChunks.find(candidatePos) != loadingChunks.end()) continue;
 		if (generatingChunks.find(candidatePos) != generatingChunks.end()) continue;
+		if (chunkMap.find(candidatePos) != chunkMap.end()) continue;
 
 		return candidatePos;
 	}
@@ -247,16 +267,16 @@ void WorldChunks::render(std::shared_ptr < Camera> camera) {
 	}
 }
 
-void WorldChunks::remeshChunk(const ChunkPos& pos) {
-	if (chunkMap.find(pos) == chunkMap.end()) {
+void WorldChunks::remeshChunk(const SectionPos& pos) {
+	if (chunkSections.find(pos) == chunkSections.end()) {
 		return;
 	}
 	pendingChunks.insert(pos);
 }
 
 uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
-	glm::vec3 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
-	ChunkPos cposStruct = { cpos.x, cpos.y, cpos.z };
+	glm::ivec2 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
+	ChunkPos cposStruct = { static_cast<int>(cpos.x), static_cast<int>(cpos.y) };
 
 	if (chunkMap.find(cposStruct) == chunkMap.end()) {
 		return 0;
@@ -264,18 +284,22 @@ uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 
 	std::shared_ptr<Chunk> c = chunkMap[cposStruct];
 
-	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
-	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
-	int lz = (z % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int lx = (x % CHUNK_WIDTH + CHUNK_WIDTH) % CHUNK_WIDTH;
+	int ly = y;
+	int lz = (z % CHUNK_WIDTH + CHUNK_WIDTH) % CHUNK_WIDTH;
 
-	return c->getBlockAt(getIndex(lx, ly, lz));
+	if (ly < 0) {
+		return 0;
+	}
+
+	return c->getBlockAt(getChunkIndex(lx, ly, lz));
 }
 
 
 
 void WorldChunks::setBlockAt(int x, int y, int z, uint8_t blockType) {
-	glm::vec3 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
-	ChunkPos cposStruct = { cpos.x, cpos.y, cpos.z };
+	glm::ivec2 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
+	ChunkPos cposStruct = { static_cast<int>(cpos.x), static_cast<int>(cpos.y) };
 
 	if (chunkMap.find(cposStruct) == chunkMap.end()) {
 		return;
@@ -283,17 +307,19 @@ void WorldChunks::setBlockAt(int x, int y, int z, uint8_t blockType) {
 
 	std::shared_ptr<Chunk> c = chunkMap[cposStruct];
 
-	int lx = (x % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
-	int ly = (y % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
-	int lz = (z % CHUNK_SIZE + CHUNK_SIZE) % CHUNK_SIZE;
+	int lx = (x % CHUNK_WIDTH + CHUNK_WIDTH) % CHUNK_WIDTH;
+	int ly = y;
+	int lz = (z % CHUNK_WIDTH + CHUNK_WIDTH) % CHUNK_WIDTH;
 
-	c->setBlockAt(getIndex(lx, ly, lz), blockType);
+	int sly = y / SECTION_SIZE;
 
-	remeshModified(cposStruct, lx, ly, lz);
+	c->setBlockAt(getChunkIndex(lx, ly, lz), blockType);
+
+	remeshModified({cpos.x, sly, cpos.y}, lx, ly, lz);
 }
 
-void WorldChunks::remeshModified(const ChunkPos& pos, int x, int y, int z) {
-	std::vector<ChunkPos> toRemesh = { {0, 0, 0} };
+void WorldChunks::remeshModified(const SectionPos& pos, int x, int y, int z) {
+	std::vector<SectionPos> toRemesh = { {0, 0, 0} };
 	
 	if (x == 0) {
 		// remesh negX
@@ -308,19 +334,19 @@ void WorldChunks::remeshModified(const ChunkPos& pos, int x, int y, int z) {
 		toRemesh.push_back({ 0, 0, -1 });
 	}
 
-	if (x == CHUNK_SIZE - 1) {
+	if (x == SECTION_SIZE - 1) {
 		toRemesh.push_back({ 1, 0, 0 });
 	}
 
-	if (y == CHUNK_SIZE - 1) {
+	if (y == SECTION_SIZE - 1) {
 		toRemesh.push_back({ 0, 1, 0 });
 	}
 
-	if (z == CHUNK_SIZE - 1) {
+	if (z == SECTION_SIZE - 1) {
 		toRemesh.push_back({ 0, 0, 1 });
 	}
 
-	for (const ChunkPos& toRemeshCoord : toRemesh) {
+	for (const SectionPos& toRemeshCoord : toRemesh) {
 		int cx = pos.x + toRemeshCoord.x;
 		int cy = pos.y + toRemeshCoord.y;
 		int cz = pos.z + toRemeshCoord.z;

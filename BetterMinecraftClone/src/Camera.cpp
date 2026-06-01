@@ -2,7 +2,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <iostream>
 
-Camera::Camera(float ratio, float near, float far, float fov) : position(), projectionMatrix(), viewMatrix(), aspectRatio(ratio), nearPlane(near), farPlane(far), fov(fov), pitch(0.0f), yaw(-90.0f), worldUp(glm::vec3(0.0, 1.0, 0.0)) {
+Camera::Camera(float ratio, float near, float far, float fov) : position(0.0f, 100.0f, 0.0f), projectionMatrix(), viewMatrix(), aspectRatio(ratio), nearPlane(near), farPlane(far), fov(fov), pitch(0.0f), yaw(-90.0f), worldUp(glm::vec3(0.0, 1.0, 0.0)) {
 	initialize();
 }
 

@@ -6,18 +6,15 @@
 #include <condition_variable>
 #include "Chunk.h"
 #include "TerrainGenerator.h"
+#include "Types.h"
 
 struct WorldGenTask {
-	int x;
-	int y;
-	int z;
+	ChunkPos pos;
 };
 
 struct WorldGenTaskResult {
 	std::shared_ptr<Chunk> chunk;
-	int x;
-	int y;
-	int z;
+	ChunkPos pos;
 };
 
 class WorldGeneratorScheduler {
@@ -50,7 +47,7 @@ private:
 
 	std::condition_variable cv;
 
-	std::shared_ptr<Chunk> generateChunk(int x, int y, int z);
+	std::shared_ptr<Chunk> generateChunk(int x, int z);
 
 	std::shared_ptr<TerrainGenerator> generator;
 

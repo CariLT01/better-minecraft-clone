@@ -41,11 +41,12 @@ void TerrainGenerator::returnToPool(BufferType* rawPtr) {
 	}
 }
 
-std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cy, int cz) {
+std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cz) {
 
 	float scale = 1.5f; // original: 1.5f
-	int chunkSizeInt = static_cast<int>(CHUNK_SIZE);
-
+	int chunkWidthInt = static_cast<int>(CHUNK_WIDTH);
+	int chunkHeightInt = static_cast<int>(CHUNK_HEIGHT);
+		
 
 	BorrowedBuffer gridArray1p = borrow();
 	BorrowedBuffer gridArray2p = borrow();
@@ -58,29 +59,29 @@ std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cy, int cz) {
 	std::array<float, CHUNK_VOLUME>& gridArray4 = *gridArray4p;
 
 
-	simplex->GenUniformGrid3D((gridArray1).data(), cx * chunkSizeInt * scale, cy * chunkSizeInt * scale, cz * chunkSizeInt * scale, chunkSizeInt, chunkSizeInt, chunkSizeInt, scale, scale, scale, 69);
+	simplex->GenUniformGrid3D((gridArray1).data(), cx * chunkWidthInt * scale, chunkHeightInt * scale, cz * chunkWidthInt * scale, chunkWidthInt, chunkHeightInt, chunkWidthInt, scale, scale, scale, 69);
 
 	float caveScale = 1.5f; // original: 0.6f
 
-	simplex->GenUniformGrid3D(gridArray2.data(), cx * chunkSizeInt * caveScale, cy * chunkSizeInt * caveScale, cz * chunkSizeInt * caveScale, chunkSizeInt, chunkSizeInt, chunkSizeInt, caveScale, caveScale, caveScale, 100);
-	simplex->GenUniformGrid3D(gridArray3.data(), cx * chunkSizeInt * caveScale, cy * chunkSizeInt * caveScale, cz * chunkSizeInt * caveScale, chunkSizeInt, chunkSizeInt, chunkSizeInt, caveScale, caveScale, caveScale, 5);
+	simplex->GenUniformGrid3D(gridArray2.data(), cx * chunkWidthInt * caveScale, chunkHeightInt * caveScale, cz * chunkWidthInt * caveScale, chunkWidthInt, chunkHeightInt, chunkWidthInt, caveScale, caveScale, caveScale, 100);
+	simplex->GenUniformGrid3D(gridArray3.data(), cx * chunkWidthInt * caveScale, chunkHeightInt * caveScale, cz * chunkWidthInt * caveScale, chunkWidthInt, chunkHeightInt, chunkWidthInt, caveScale, caveScale, caveScale, 5);
 
 	// HF noise
 	float caveScaleHF = 10.0f;
-	simplex->GenUniformGrid3D(gridArray4.data(), cx * chunkSizeInt * caveScaleHF, cy * chunkSizeInt * caveScaleHF, cz * chunkSizeInt * caveScaleHF, chunkSizeInt, chunkSizeInt, chunkSizeInt, caveScaleHF, caveScaleHF, caveScaleHF, 50);
+	simplex->GenUniformGrid3D(gridArray4.data(), cx * chunkWidthInt * caveScaleHF, chunkHeightInt * caveScaleHF, cz * chunkWidthInt * caveScaleHF, chunkWidthInt, chunkHeightInt, chunkWidthInt, caveScaleHF, caveScaleHF, caveScaleHF, 50);
 
 
 	std::shared_ptr<Chunk> chunk = std::make_shared<Chunk>();
-	for (int x = 0; x < CHUNK_SIZE; x++) {
-		for (int z = 0; z < CHUNK_SIZE; z++) {
+	for (int x = 0; x < CHUNK_WIDTH; x++) {
+		for (int z = 0; z < CHUNK_WIDTH; z++) {
 
-			for (int y = 0; y < CHUNK_SIZE; y++) {
-				float worldY = cy * static_cast<int>(CHUNK_SIZE) + y;
+			for (int y = 0; y < CHUNK_HEIGHT; y++) {
+				float worldY = y; // lift to sea level
 
-				unsigned accessIndex = (z * CHUNK_SIZE + y) * CHUNK_SIZE + x;
+				unsigned accessIndex = (z * CHUNK_HEIGHT + y) * CHUNK_WIDTH + x;
 
 				float noiseValue = gridArray1[accessIndex];
-				float height = noiseValue * 100.0f;
+				float height = noiseValue * 100.0f + 70.0f;
 
 
 				float hf = gridArray4[accessIndex];
@@ -99,14 +100,14 @@ std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cy, int cz) {
 
 				if (worldY < height - 5) {
 
-					chunk->setBlockAt(getIndex(x, y, z), 3);
+					chunk->setBlockAt(getChunkIndex(x, y, z), 3);
 					continue;
 				}
 				else if (worldY < height) {
 
 
 
-					chunk->setBlockAt(getIndex(x, y, z), 1);
+					chunk->setBlockAt(getChunkIndex(x, y, z), 1);
 				}
 			}
 		}

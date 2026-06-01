@@ -34,11 +34,11 @@ void WorldGeneratorScheduler::queueLoop(int threadId) {
 			queue.pop();
 		}
 
-		std::shared_ptr<Chunk> generatedChunk = generateChunk(itemToProcess.x, itemToProcess.y, itemToProcess.z);
+		std::shared_ptr<Chunk> generatedChunk = generateChunk(itemToProcess.pos.x, itemToProcess.pos.z);
 
 		WorldGenTaskResult res = {
 			generatedChunk,
-			itemToProcess.x, itemToProcess.y, itemToProcess.z
+			itemToProcess.pos
 		};
 
 		{
@@ -49,8 +49,8 @@ void WorldGeneratorScheduler::queueLoop(int threadId) {
 	}
 }
 
-std::shared_ptr<Chunk> WorldGeneratorScheduler::generateChunk(int x, int y, int z) {
-	return generator->generateChunk(x, y, z);
+std::shared_ptr<Chunk> WorldGeneratorScheduler::generateChunk(int x, int z) {
+	return generator->generateChunk(x, z);
 }
 
 void WorldGeneratorScheduler::addTask(const WorldGenTask& task) {
