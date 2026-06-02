@@ -42,4 +42,5 @@ private:
 	void createWorld();
 	void loadTextures();
 	
+	void setupUserInterface();
 };

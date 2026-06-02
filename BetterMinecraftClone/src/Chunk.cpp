@@ -33,6 +33,13 @@ BlockData Chunk::getBlockAt(unsigned int index) {
 	return unpack(data);
 }
 
+void Chunk::clearLights() {
+	for (unsigned int i = 0; i < chunkData.size(); i++) {
+		BlockData data = unpack(chunkData[i]);
+		chunkData[i] = pack(data.blockId, 0, 0);
+	}
+}
+
 std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> Chunk::calculateLight(const std::vector<LightStack>& startLightStack, int cx, int cz) {
 
 	std::cout << "Began building light" << std::endl;
@@ -146,6 +153,7 @@ std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> Chunk::calcu
 
 
 				BlockData bdata = getBlockAt(getChunkIndex(bx, by, bz));
+				if (bdata.blockId != 0) continue; // can't spread through solid blocks
 				if (targetLight <= bdata.skyLight) continue;
 
 

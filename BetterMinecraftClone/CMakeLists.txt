@@ -32,7 +32,36 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(glfw)
 FetchContent_MakeAvailable(FastNoise2)
-FetchContent_MakeAvailable(imgui)
+
+FetchContent_GetProperties(imgui)
+if(NOT imgui_POPULATED)
+    FetchContent_Populate(imgui)
+    
+    # Define the ImGui source files we actually want to compile
+    set(IMGUI_SRCS
+        ${imgui_SOURCE_DIR}/imgui.cpp
+        ${imgui_SOURCE_DIR}/imgui_demo.cpp
+        ${imgui_SOURCE_DIR}/imgui_draw.cpp
+        ${imgui_SOURCE_DIR}/imgui_tables.cpp
+        ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+        
+        # BACKENDS: Change these depending on your tech stack!
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+    )
+    
+    # Create an internal static library for ImGui
+    add_library(imgui STATIC ${IMGUI_SRCS})
+    
+    # Specify where the compiler can find ImGui headers
+    target_include_directories(imgui PUBLIC 
+        ${imgui_SOURCE_DIR}
+        ${imgui_SOURCE_DIR}/backends
+    )
+    
+    # ImGui backends need to know about your windowing/graphics libraries
+    target_link_libraries(imgui PUBLIC glfw OpenGL::GL)
+endif()
 
 # Add source
 add_executable (BetterMinecraftClone "src/BetterMinecraftClone.cpp" "src/BetterMinecraftClone.h" "src/Window.cpp" "src/Window.h" "glad/src/glad.c" "src/Game.cpp" "src/Game.h" "src/ChunkMesh.cpp" "src/ChunkMesh.h" "src/Shader.h" "src/Shader.cpp" "src/ShaderProgram.h" "src/ShaderProgram.cpp" "src/Camera.h" "src/Camera.cpp" "src/ChunkBuilder.h" "src/config.h" "src/ChunkBuilder.cpp" "src/MathUtils.h" "src/WorldChunks.h" "src/Chunk.h" "src/Chunk.cpp" "src/WorldChunks.cpp" "src/TerrainGenerator.h" "src/TerrainGenerator.cpp" "src/TextureLoader.h" "src/TextureLoader.cpp" "src/BlockTypes.h" "src/Texture.h" "src/Texture.cpp" "src/TextureArray.cpp" "src/TextureArray.h" "src/ChunkBuilderWorkerScheduler.h"  "src/ChunkBuilderWorkerScheduler.cpp" "src/WorldGeneratorScheduler.h" "src/WorldGeneratorScheduler.cpp" "src/BlockHighlight.h" "src/BlockHighlight.cpp" "src/ChunkSectionView.h" "src/ChunkSectionView.cpp" "src/Types.h" "src/ThreadPool.h" "src/LightingScheduler.h" "src/LightingScheduler.cpp")

@@ -385,7 +385,9 @@ void WorldChunks::setBlockAt(int x, int y, int z, BlockData blockType) {
 
 	c->setBlockAt(getChunkIndex(lx, ly, lz), blockType);
 
-	remeshModified({cpos.x, sly, cpos.y}, lx, ly, lz);
+	lightMapQueue.erase(cposStruct); // TODO: may not work
+	c->clearLights();
+	recalculateLight({ cpos.x, cpos.y }, c); // TODO: will be very laggy!
 }
 
 void WorldChunks::remeshModified(const SectionPos& pos, int x, int y, int z) {

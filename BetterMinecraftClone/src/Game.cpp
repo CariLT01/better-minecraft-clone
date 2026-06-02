@@ -41,8 +41,8 @@ void Game::mouseButtonPressedCallback(GLFWwindow* window, int button, int action
 	if (button == GLFW_MOUSE_BUTTON_1 && action == GLFW_PRESS) {
 		gameInstance->worldChunks->setBlockAt(hitPos.x, hitPos.y, hitPos.z, {
 			.blockId = 0,
-			.skyLight = 15,
-			.blockLight = 15});
+			.skyLight = 0,
+			.blockLight = 0});
 	}
 
 	if (button == GLFW_MOUSE_BUTTON_2 && action == GLFW_PRESS) {
@@ -51,8 +51,8 @@ void Game::mouseButtonPressedCallback(GLFWwindow* window, int button, int action
 		
 		gameInstance->worldChunks->setBlockAt(hitPos.x + placementOffset.x, hitPos.y + placementOffset.y, hitPos.z + placementOffset.z, {
 			.blockId = 4,
-			.skyLight = 15,
-			.blockLight = 15
+			.skyLight = 0,
+			.blockLight = 0
 			});
 	}
 
@@ -173,4 +173,8 @@ void Game::loadTextures() {
 	textureAtlas->create();
 
 	std::cout << "All textures loaded" << std::endl;
+}
+
+void Game::setupUserInterface() {
+	
 }

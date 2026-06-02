@@ -49,6 +49,8 @@ public:
 
 	std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> calculateLight(const std::vector<LightStack>& initialLightStack, int cx, int cz);
 
+	void clearLights();
+
 private:
 
 	std::array<uint16_t, CHUNK_VOLUME> chunkData;
