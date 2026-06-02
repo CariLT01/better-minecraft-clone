@@ -14,6 +14,7 @@
 #include "ChunkBuilderWorkerScheduler.h"
 #include "WorldGeneratorScheduler.h"
 #include "Types.h"
+#include "LightingScheduler.h"
 
 constexpr unsigned int RENDER_DISTANCE_VOLUME = (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1) * (RENDER_DISTANCE * 2 + 1);
 
@@ -32,11 +33,13 @@ public:
 
 private:
     std::unordered_map<ChunkPos, std::shared_ptr<Chunk>, ChunkPosHash> chunkMap;
+    std::unordered_set<ChunkPos, ChunkPosHash> relightingChunks;
     std::unordered_map<SectionPos, std::shared_ptr<ChunkSectionView>, SectionPosHash> chunkSections;
     std::unordered_map<SectionPos, std::shared_ptr<ChunkMesh>, SectionPosHash> chunkMeshesMap;
 
     std::unordered_set<SectionPos, SectionPosHash> loadedChunks;
     std::unordered_set<SectionPos, SectionPosHash> loadingChunks;
+    
     std::unordered_set<SectionPos, SectionPosHash> pendingChunks;
     std::unordered_set<ChunkPos, ChunkPosHash> generatingChunks;
     
@@ -50,6 +53,7 @@ private:
 	void buildChunkMesh(const SectionPos& pos);
 
     void recalculateLight(const ChunkPos& cpos, const std::shared_ptr<Chunk> chunk);
+    void handleCompletedLightmaps();
 
     std::optional<ChunkPos> getNextChunkToLoad(const ChunkPos& pos);
 
@@ -57,6 +61,7 @@ private:
     std::shared_ptr<TextureArray> textureAtlas;
 
     std::unique_ptr<WorldGeneratorScheduler> worldGenScheduler;
+    std::unique_ptr<LightingScheduler> lightingScheduler;
 
     unsigned int numTextures;
 

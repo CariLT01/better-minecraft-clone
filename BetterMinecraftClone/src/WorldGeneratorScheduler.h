@@ -7,6 +7,7 @@
 #include "Chunk.h"
 #include "TerrainGenerator.h"
 #include "Types.h"
+#include "ThreadPool.h"
 
 struct WorldGenTask {
 	ChunkPos pos;
@@ -52,6 +53,8 @@ private:
 	std::shared_ptr<TerrainGenerator> generator;
 
 	std::atomic<bool> stopRequested{ false };
+
+	std::shared_ptr<ThreadPool> threadPool;
 
 
 };

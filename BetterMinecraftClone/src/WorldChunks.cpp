@@ -8,7 +8,7 @@
 
 WorldChunks::WorldChunks(std::shared_ptr<ShaderProgram> terrainShaderProgram, std::shared_ptr<TextureArray> textureAtlas) : chunkMap(), loadedChunks(), pendingChunks(), chunkOffsets(), chunkMeshesMap(),
 terrainShaderProgram(terrainShaderProgram), textureAtlas(textureAtlas), numTextures(getRuntimeBlockTypes().uniqueTextures.size()),
-scheduler(new ChunkBuilderWorkerScheduler(THREAD_COUNT)), worldGenScheduler(new WorldGeneratorScheduler(THREAD_COUNT)) {
+scheduler(new ChunkBuilderWorkerScheduler(THREAD_COUNT)), worldGenScheduler(new WorldGeneratorScheduler(THREAD_COUNT)), lightingScheduler(std::make_unique<LightingScheduler>()) {
 	precomputeChunkOffsets();
 	shouldBeLoadedLookup.reserve(RENDER_DISTANCE_VOLUME);
 
@@ -28,28 +28,74 @@ void WorldChunks::recalculateLight(const ChunkPos& cpos, const std::shared_ptr<C
 		lightMapQueue.erase(it);
 	}
 
-	std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> result = chunk->calculateLight(initialLightmap, cpos.x, cpos.z);
+	lightingScheduler->addTask(LightingTask{
+		.chunk = chunk,
+		.initialLightStack = initialLightmap,
+		.chunkPos = cpos,
+		});
+}
 
-	for (const auto& pair : result) {
-		const ChunkPos& neighborPos = pair.first;
-		const std::vector<LightStack>& lightStacks = pair.second;
-		// This is a neighboring chunk, we need to queue the lightmap for it
+void WorldChunks::handleCompletedLightmaps() {
+	std::unique_lock<std::mutex> lock(lightingScheduler->getResultsMutex());
+	const std::vector<LightingTaskResult>& results = lightingScheduler->getResults();
 
-		if (neighborPos == cpos) {
-			// This is the same chunk, we can ignore it since it's already calculated
-			// Actually clear it
-			lightMapQueue.erase(cpos);
+	for (const LightingTaskResult& result : results) {
+		for (const auto& pair : result.lightBorder) {
+			const ChunkPos& neighborPos = pair.first;
+			const std::vector<LightStack>& lightStacks = pair.second;
+
+			// 1. Skip if it's the same chunk
+			if (neighborPos == result.chunkPos) {
+				lightMapQueue.erase(result.chunkPos);
+				continue;
+			}
+
+			// 2. Make sure the neighbor chunk actually exists/is loaded
+			if (chunkMap.find(neighborPos) == chunkMap.end()) {
+				continue;
+			}
+			std::shared_ptr<Chunk> neighborChunk = chunkMap[neighborPos];
+
+			// 3. FILTERING: Only keep incoming light stacks that are brighter 
+			//    than what the neighbor chunk already has.
+			std::vector<LightStack> validStacks;
+			for (const LightStack& stack : lightStacks) {
+				unsigned int idx = getChunkIndex(stack.pos.x, stack.pos.y, stack.pos.z);
+				if (stack.lightLevel > neighborChunk->getBlockAt(idx).skyLight) {
+					validStacks.push_back(stack);
+				}
+			}
+
+			// 4. Only queue the neighbor if there is actually new, brighter light coming in
+			if (!validStacks.empty()) {
+				std::vector<LightStack>& existingStacks = lightMapQueue[neighborPos];
+				existingStacks.insert(existingStacks.end(), validStacks.begin(), validStacks.end());
+
+				// DO NOT call recalculateLight(...) synchronously here!
+				// Instead, let your lightingScheduler pick up 'lightMapQueue' 
+				// on the next frame/tick update to process asynchronously.
+			}
+		}
+
+		relightingChunks.erase(result.chunkPos);
+
+		if (chunkMap.find(result.chunkPos) == chunkMap.end()) {
 			continue;
 		}
 
-		if (lightMapQueue.find(neighborPos) != lightMapQueue.end()) {
-			std::vector<LightStack>& existingStacks = lightMapQueue[neighborPos];
-			existingStacks.insert(existingStacks.end(), lightStacks.begin(), lightStacks.end());
-		}
-		else {
-			lightMapQueue[neighborPos] = lightStacks;
+		std::shared_ptr<Chunk> c = chunkMap[result.chunkPos];
+
+		// Remeshing logic...
+		std::vector<ChunkSectionViewBuildData> viewResults = ChunkSectionView::createChunkSectionViewsFromChunk(result.chunkPos, c);
+		for (const auto& data : viewResults) {
+			chunkSections[data.position] = data.view;
+			if (pendingChunks.find(data.position) == pendingChunks.end()) {
+				remeshChunk(data.position);
+			}
 		}
 	}
+
+	lightingScheduler->clearResults();
 }
 
 
@@ -63,27 +109,15 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		for (const WorldGenTaskResult& res : worldGenScheduler->getResults()) {
 			std::shared_ptr<Chunk> newChunk = res.chunk;
 			ChunkPos currentCpos = res.pos;
-			recalculateLight(currentCpos, newChunk);
-
-
 			chunkMap[currentCpos] = newChunk;
-
+			recalculateLight(currentCpos, newChunk);
 			generatingChunks.erase(currentCpos);
-
-			// Add it to pending if not already in it
-			std::vector<ChunkSectionViewBuildData> results = ChunkSectionView::createChunkSectionViewsFromChunk(currentCpos, newChunk);
-			for (const auto& data : results) {
-				chunkSections[data.position] = data.view;
-				if (pendingChunks.find(data.position) == pendingChunks.end()) {
-					// std::cout << "Query for remeshing" << std::endl;
-					remeshChunk(data.position);
-				}
-				
-			}
 		}
 
 		worldGenScheduler->clearResults();
 	}
+
+	handleCompletedLightmaps();
 
 	unsigned int queueSize;
 

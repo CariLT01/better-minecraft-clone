@@ -19,6 +19,12 @@ FetchContent_Declare(
     GIT_TAG        master # Or specify a specific release tag/commit hash
 )
 
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        docking # Or use a specific release tag like "v1.90"
+)
+
 set(GLFW_INSTALL OFF CACHE INTERNAL "")
 set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "")
 set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "")
@@ -26,9 +32,10 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(glfw)
 FetchContent_MakeAvailable(FastNoise2)
+FetchContent_MakeAvailable(imgui)
 
 # Add source
-add_executable (BetterMinecraftClone "src/BetterMinecraftClone.cpp" "src/BetterMinecraftClone.h" "src/Window.cpp" "src/Window.h" "glad/src/glad.c" "src/Game.cpp" "src/Game.h" "src/ChunkMesh.cpp" "src/ChunkMesh.h" "src/Shader.h" "src/Shader.cpp" "src/ShaderProgram.h" "src/ShaderProgram.cpp" "src/Camera.h" "src/Camera.cpp" "src/ChunkBuilder.h" "src/config.h" "src/ChunkBuilder.cpp" "src/MathUtils.h" "src/WorldChunks.h" "src/Chunk.h" "src/Chunk.cpp" "src/WorldChunks.cpp" "src/TerrainGenerator.h" "src/TerrainGenerator.cpp" "src/TextureLoader.h" "src/TextureLoader.cpp" "src/BlockTypes.h" "src/Texture.h" "src/Texture.cpp" "src/TextureArray.cpp" "src/TextureArray.h" "src/ChunkBuilderWorkerScheduler.h"  "src/ChunkBuilderWorkerScheduler.cpp" "src/WorldGeneratorScheduler.h" "src/WorldGeneratorScheduler.cpp" "src/BlockHighlight.h" "src/BlockHighlight.cpp" "src/ChunkSectionView.h" "src/ChunkSectionView.cpp" "src/Types.h")
+add_executable (BetterMinecraftClone "src/BetterMinecraftClone.cpp" "src/BetterMinecraftClone.h" "src/Window.cpp" "src/Window.h" "glad/src/glad.c" "src/Game.cpp" "src/Game.h" "src/ChunkMesh.cpp" "src/ChunkMesh.h" "src/Shader.h" "src/Shader.cpp" "src/ShaderProgram.h" "src/ShaderProgram.cpp" "src/Camera.h" "src/Camera.cpp" "src/ChunkBuilder.h" "src/config.h" "src/ChunkBuilder.cpp" "src/MathUtils.h" "src/WorldChunks.h" "src/Chunk.h" "src/Chunk.cpp" "src/WorldChunks.cpp" "src/TerrainGenerator.h" "src/TerrainGenerator.cpp" "src/TextureLoader.h" "src/TextureLoader.cpp" "src/BlockTypes.h" "src/Texture.h" "src/Texture.cpp" "src/TextureArray.cpp" "src/TextureArray.h" "src/ChunkBuilderWorkerScheduler.h"  "src/ChunkBuilderWorkerScheduler.cpp" "src/WorldGeneratorScheduler.h" "src/WorldGeneratorScheduler.cpp" "src/BlockHighlight.h" "src/BlockHighlight.cpp" "src/ChunkSectionView.h" "src/ChunkSectionView.cpp" "src/Types.h" "src/ThreadPool.h" "src/LightingScheduler.h" "src/LightingScheduler.cpp")
 
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET BetterMinecraftClone PROPERTY CXX_STANDARD 20)
