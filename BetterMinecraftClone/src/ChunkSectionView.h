@@ -18,7 +18,7 @@ public:
 	ChunkSectionView(std::shared_ptr<Chunk> chunkView, unsigned int sectionIndex);
 	~ChunkSectionView();
 
-	uint8_t getBlockAt(int x, int y, int z);
+	BlockData getBlockAt(int x, int y, int z);
 
 	static std::vector<ChunkSectionViewBuildData> createChunkSectionViewsFromChunk(const ChunkPos& pos, std::shared_ptr<Chunk> chunk);
 private:

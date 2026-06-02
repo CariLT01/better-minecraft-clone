@@ -18,6 +18,40 @@ WorldChunks::~WorldChunks() {
 
 }
 
+void WorldChunks::recalculateLight(const ChunkPos& cpos, const std::shared_ptr<Chunk> chunk) {
+	std::vector<LightStack> initialLightmap;
+
+	// 1. Extract and immediately REMOVE the data for this chunk so it doesn't persist
+	auto it = lightMapQueue.find(cpos);
+	if (it != lightMapQueue.end()) {
+		initialLightmap = std::move(it->second); // Use move to avoid copying a massive vector
+		lightMapQueue.erase(it);
+	}
+
+	std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> result = chunk->calculateLight(initialLightmap, cpos.x, cpos.z);
+
+	for (const auto& pair : result) {
+		const ChunkPos& neighborPos = pair.first;
+		const std::vector<LightStack>& lightStacks = pair.second;
+		// This is a neighboring chunk, we need to queue the lightmap for it
+
+		if (neighborPos == cpos) {
+			// This is the same chunk, we can ignore it since it's already calculated
+			// Actually clear it
+			lightMapQueue.erase(cpos);
+			continue;
+		}
+
+		if (lightMapQueue.find(neighborPos) != lightMapQueue.end()) {
+			std::vector<LightStack>& existingStacks = lightMapQueue[neighborPos];
+			existingStacks.insert(existingStacks.end(), lightStacks.begin(), lightStacks.end());
+		}
+		else {
+			lightMapQueue[neighborPos] = lightStacks;
+		}
+	}
+}
+
 
 void WorldChunks::update(glm::vec3 playerPosition) {
 	glm::ivec2 chunkPosition = realPositionToChunkPosition(playerPosition);
@@ -29,6 +63,8 @@ void WorldChunks::update(glm::vec3 playerPosition) {
 		for (const WorldGenTaskResult& res : worldGenScheduler->getResults()) {
 			std::shared_ptr<Chunk> newChunk = res.chunk;
 			ChunkPos currentCpos = res.pos;
+			recalculateLight(currentCpos, newChunk);
+
 
 			chunkMap[currentCpos] = newChunk;
 
@@ -274,12 +310,12 @@ void WorldChunks::remeshChunk(const SectionPos& pos) {
 	pendingChunks.insert(pos);
 }
 
-uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
+BlockData WorldChunks::getBlockAt(int x, int y, int z) {
 	glm::ivec2 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
 	ChunkPos cposStruct = { static_cast<int>(cpos.x), static_cast<int>(cpos.y) };
 
 	if (chunkMap.find(cposStruct) == chunkMap.end()) {
-		return 0;
+		return {};
 	}
 
 	std::shared_ptr<Chunk> c = chunkMap[cposStruct];
@@ -289,7 +325,7 @@ uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 	int lz = (z % CHUNK_WIDTH + CHUNK_WIDTH) % CHUNK_WIDTH;
 
 	if (ly < 0) {
-		return 0;
+		return {};
 	}
 
 	return c->getBlockAt(getChunkIndex(lx, ly, lz));
@@ -297,7 +333,7 @@ uint8_t WorldChunks::getBlockAt(int x, int y, int z) {
 
 
 
-void WorldChunks::setBlockAt(int x, int y, int z, uint8_t blockType) {
+void WorldChunks::setBlockAt(int x, int y, int z, BlockData blockType) {
 	glm::ivec2 cpos = realPositionToChunkPosition(glm::vec3(x, y, z));
 	ChunkPos cposStruct = { static_cast<int>(cpos.x), static_cast<int>(cpos.y) };
 

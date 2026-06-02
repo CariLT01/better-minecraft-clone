@@ -27,8 +27,8 @@ public:
     void update(glm::vec3 playerPosition);
     void render(std::shared_ptr<Camera> camera);
 
-    uint8_t getBlockAt(int x, int y, int z);
-    void setBlockAt(int x, int y, int z, uint8_t blockType);
+    BlockData getBlockAt(int x, int y, int z);
+    void setBlockAt(int x, int y, int z, BlockData blockType);
 
 private:
     std::unordered_map<ChunkPos, std::shared_ptr<Chunk>, ChunkPosHash> chunkMap;
@@ -49,6 +49,8 @@ private:
 
 	void buildChunkMesh(const SectionPos& pos);
 
+    void recalculateLight(const ChunkPos& cpos, const std::shared_ptr<Chunk> chunk);
+
     std::optional<ChunkPos> getNextChunkToLoad(const ChunkPos& pos);
 
     std::shared_ptr<ShaderProgram> terrainShaderProgram;
@@ -64,6 +66,9 @@ private:
 
     // Remesh with a block modification coordinate
     void remeshModified(const SectionPos& pos, int modificationX, int modificationY, int modificationZ);
-    
+  
     std::unordered_set<ChunkPos, ChunkPosHash> shouldBeLoadedLookup;
+
+
+    std::unordered_map<ChunkPos, std::vector<LightStack>, ChunkPosHash> lightMapQueue;
 };

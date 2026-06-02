@@ -22,8 +22,6 @@ const int faceOffsetLookup[6 * 3] = {
 };
 
 
-
-
 ChunkBuilder::ChunkBuilder() {
     cachedBlockTypes = getRuntimeBlockTypes();
     buildAoData();
@@ -61,26 +59,31 @@ std::vector<Vertex> ChunkBuilder::buildChunkMeshData(const ChunkDataInput& chunk
         const int x = blockPos.x;
         const int y = blockPos.y;
         const int z = blockPos.z;
-        uint8_t blockType = chunkData->getBlockAt(x, y, z);
-		if (blockType == 0) continue;
+        BlockData blockType = chunkData->getBlockAt(x, y, z);
+		if (blockType.blockId == 0) continue;
 		for (int face = 0; face < 6; face++) {
-			if (!isVoid(chunkDataIn, x + faceOffsetLookup[face * 3 + 0], y + faceOffsetLookup[face * 3 + 1], z + faceOffsetLookup[face * 3 + 2])) continue;
+            int ox = x + faceOffsetLookup[face * 3 + 0];
+            int oy = y + faceOffsetLookup[face * 3 + 1];
+            int oz = z + faceOffsetLookup[face * 3 + 2];
+			if (!isVoid(chunkDataIn, ox, oy, oz)) continue;
+			OffsetPositionLookup lk = getOffsetPositionLookup(chunkDataIn, ox, oy, oz);
 			// std::cout << "Generate face at: " << x << ", " << y << ", " << z << " face: " << face << std::endl;
-			generateFace(chunkDataIn, blockType, face, x, y, z, vertices);
+			generateFace(chunkDataIn, blockType, lk.chunkSection->getBlockAt(lk.lookupPos.x, lk.lookupPos.y, lk.lookupPos.z), face, x, y, z, vertices);
 	    }
 	}
 	return vertices;
 }
 
-unsigned int packData(unsigned int textureType, unsigned int ao) {
+unsigned int packData(unsigned int textureType, unsigned int ao, unsigned int lightBlock, unsigned int lightSky) {
 
     // layout:
-    // 8 bits texture type --- 2 bits ao
+    // 8 bits texture type --- 8 bits light --- 2 bits ao
 
     uint8_t textureTypeMasked = textureType & 0b11111111;
+    uint8_t lightMasked = ((lightBlock & 0b1111) << 4) | (lightSky & 0b1111);
     uint8_t aoMasked = ao & 0b11;
 
-    unsigned int packed = (textureTypeMasked << 2) | aoMasked;
+    unsigned int packed = (textureTypeMasked << 10) | (lightMasked << 2) | aoMasked;
 
     return packed;
 }
@@ -129,7 +132,7 @@ unsigned int ChunkBuilder::getAoAtPosition(const ChunkDataInput& chunkData, int 
     return ao;
 }
 
-void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices) {
+void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, const BlockData& blockType, const BlockData& offsetBlockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices) {
 	// A face is made of 4 vertices (ordered as a quad)
 		// We will convert them into 2 triangles (6 vertices total for OpenGL/DirectX)
     int uvLookup[4] = { 0, 1, 3, 2 };
@@ -138,7 +141,7 @@ void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockTy
     unsigned int aoValues[4];
 
 
-    int ttype = getTextureTypeFromBlockTypeAndFace(blockType, faceIndex);;
+    int ttype = getTextureTypeFromBlockTypeAndFace(blockType.blockId, faceIndex);;
 
 	// 1. Gather the 4 corners for this face and add the block world position
 	for (int i = 0; i < 4; i++) {
@@ -163,7 +166,7 @@ void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockTy
         faceVertices[i].normal = normal;
         //faceVertices[i].uv = glm::vec2(uvTemplate[uvLookup[i] * 2 + 0], uvTemplate[uvLookup[i] * 2 + 1]);
         faceVertices[i].uv = glm::vec2(uvTemplate[i * 2 + 0], uvTemplate[i * 2 + 1]);
-        faceVertices[i].packedData = packData(ttype, aoValues[i]);
+        faceVertices[i].packedData = packData(ttype, aoValues[i], offsetBlockType.blockLight, offsetBlockType.skyLight);
 	}
 
     int defaultIndices[6] = { 0, 1, 2, 2, 3, 0 };
@@ -181,10 +184,10 @@ void ChunkBuilder::generateFace(const ChunkDataInput& chunkData, uint8_t blockTy
 	}
 }
 
-bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int x, int y, int z) {
+OffsetPositionLookup ChunkBuilder::getOffsetPositionLookup(const ChunkDataInput& chunkData, int x, int y, int z) {
     std::shared_ptr<ChunkSectionView> chunkDataToCheck = chunkData.chunkData;
 
-    // 1. Check X Boundaries independently
+
     if (x >= static_cast<int>(SECTION_SIZE)) {
         chunkDataToCheck = chunkData.right;
         x -= SECTION_SIZE;
@@ -216,16 +219,47 @@ bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int x, int y, int z) 
 
     // 4. Null safety guard (in case a neighboring chunk isn't loaded yet)
     if (!chunkDataToCheck) {
-        return true; // Treat unloaded chunks as empty space/void
+		// std::cout << "Warning: neighboring chunk section not loaded. Cannot perform block lookup for AO calculation. Returning default values." << std::endl;
+        return {
+			.lookupPos = {
+				x, y, z
+			},
+            .chunkSection = chunkData.chunkData
+        };
     }
 
     // 5. Final boundary confirmation & lookup
     if (x < 0 || x >= static_cast<int>(SECTION_SIZE) ||
         y < 0 || y >= static_cast<int>(SECTION_SIZE) ||
         z < 0 || z >= static_cast<int>(SECTION_SIZE)) {
-        return true;
+		// std::cout << "Error: boundary check failed after adjusting for neighboring chunk sections. This should not happen. Check the logic in getOffsetPositionLookup." << std::endl;
+        return {
+            .lookupPos = {
+                x, y, z
+            },
+            .chunkSection = chunkData.chunkData
+        };
     }
 
+    return {
+        .lookupPos = {
+            x, y, z
+        },
+        .chunkSection = chunkDataToCheck
+    };
 
-    return chunkDataToCheck->getBlockAt(x, y, z) == 0;
+}
+
+bool ChunkBuilder::isVoid(const ChunkDataInput& chunkData, int lx, int ly, int lz) {
+	OffsetPositionLookup lookup = getOffsetPositionLookup(chunkData, lx, ly, lz);
+
+	int x = lookup.lookupPos.x;
+	int y = lookup.lookupPos.y;
+	int z = lookup.lookupPos.z;
+
+    // 1. Check X Boundaries independently
+
+
+
+    return lookup.chunkSection->getBlockAt(x, y, z).blockId == 0;
 }

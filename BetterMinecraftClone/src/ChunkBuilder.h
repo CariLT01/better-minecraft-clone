@@ -206,6 +206,13 @@ struct ChunkDataInput {
     std::shared_ptr<ChunkSectionView> bottom;
 };
 
+
+struct OffsetPositionLookup {
+    SectionPos lookupPos;
+    std::shared_ptr<ChunkSectionView> chunkSection;
+};
+
+
 class ChunkBuilder {
 public:
 	ChunkBuilder();
@@ -213,7 +220,7 @@ public:
 
 	std::vector<Vertex> buildChunkMeshData(const ChunkDataInput& chunkData);
 private:
-    void generateFace(const ChunkDataInput& chunkData, uint8_t blockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices);
+    void generateFace(const ChunkDataInput& chunkData, const BlockData& blockType, const BlockData& offsetBlockType, unsigned int faceIndex, unsigned int blockX, unsigned int blockY, unsigned int blockZ, std::vector<Vertex>& vertices);
 
     bool isVoid(const ChunkDataInput& chunkData, int blockX, int blockY, int blockZ);
 
@@ -226,5 +233,9 @@ private:
 
     void buildAoData();
 
+	OffsetPositionLookup getOffsetPositionLookup(const ChunkDataInput& chunkData, int lx, int ly, int lz);
+
     CompileTimeResult cachedBlockTypes;
+
+
 };

@@ -98,16 +98,34 @@ std::shared_ptr<Chunk> TerrainGenerator::generateChunk(int cx, int cz) {
 
 
 
-				if (worldY < height - 5) {
+				if (worldY < height - 9) {
 
-					chunk->setBlockAt(getChunkIndex(x, y, z), 3);
+					chunk->setBlockAt(getChunkIndex(x, y, z), {
+						.blockId = 3,
+						.skyLight = 15,
+						.blockLight = 15});
 					continue;
 				}
+				else if (worldY < height - 3) {
+
+					 
+
+					chunk->setBlockAt(getChunkIndex(x, y, z), { 
+						.blockId = 2,
+						.skyLight = 15,
+						.blockLight = 15
+						});
+				}
+
 				else if (worldY < height) {
 
 
 
-					chunk->setBlockAt(getChunkIndex(x, y, z), 1);
+					chunk->setBlockAt(getChunkIndex(x, y, z), {
+						.blockId = 1,
+						.skyLight = 15,
+						.blockLight = 15
+					});
 				}
 			}
 		}

@@ -35,7 +35,7 @@ std::vector<ChunkSectionViewBuildData> ChunkSectionView::createChunkSectionViews
 	return views;
 }
 
-uint8_t ChunkSectionView::getBlockAt(int x, int y, int z) {
+BlockData ChunkSectionView::getBlockAt(int x, int y, int z) {
 	unsigned int local = getSectionIndex(x, y, z);
 	unsigned int globalAccess = begin + local;
 
@@ -44,16 +44,10 @@ uint8_t ChunkSectionView::getBlockAt(int x, int y, int z) {
 	if (chunkAcc == nullptr) {
 		// std::cout << "Warning: cannot query section block. Original chunk pointer has expired." << std::endl;
 		assert("chunk pointer expired");
-		return 0;
+		return {};
 	}
 
-	uint8_t block = chunkAcc->getBlockAt(globalAccess);;
-	if (block != 0) {
-		// std::cout << "we found something" << std::endl;
-	}
-	else {
-		// std::cout << "Found nothing at: " << globalAccess << std::endl;
-	}
+	BlockData block = chunkAcc->getBlockAt(globalAccess);;
 
 	return block;
 }

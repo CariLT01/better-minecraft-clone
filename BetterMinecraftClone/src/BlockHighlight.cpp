@@ -71,7 +71,7 @@ void BlockHighlight::update(std::shared_ptr<Camera> camera, std::shared_ptr<Worl
 		int fy = floor(y);
 		int fz = floor(z);
 
-		if (chunks->getBlockAt(fx, fy, fz) != 0) {
+		if (chunks->getBlockAt(fx, fy, fz).blockId != 0) {
 			hit = true;
 
 			if (fx != lastX) {

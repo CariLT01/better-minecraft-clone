@@ -14,12 +14,20 @@ out vec2 vUv;
 flat out int fBlockType;
 out float ao;
 
+out float vBlockLight;
+out float vSkyLight;
+
 const float aoLookup[4] = { 0.4f, 0.6f, 0.8f, 1.0f };
 
 void main() {
 
 
-    int unpackedTextureType = (aPackedData >> 2) & 0xFF; // 0b11111111
+    // 8 bits texture --- 8 bits light --- 2 bits AO
+
+    int unpackedTextureType = (aPackedData >> 10) & 0xFF; // 0b11111111
+    int unpackedLighting = (aPackedData >> 2) & 0xFF;
+    int unpackedBlockLight = (unpackedLighting >> 4) & 0x0F;
+    int unpackedSkyLight = unpackedLighting & 0x0F;
     int unpackedAo = aPackedData & 0x03; // 0b11
 
 
@@ -42,6 +50,8 @@ void main() {
     vBrightness = brightness * aoLookup[unpackedAo];
     vUv = aUv;
     fBlockType = unpackedTextureType;
+    vBlockLight = unpackedBlockLight;
+    vSkyLight = unpackedSkyLight;
 
 
 }
